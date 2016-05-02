@@ -351,9 +351,6 @@ void Viewer::MakeFromSkel(const std::vector<Vec4>& Squelette)
     Dart begin;
     Volume v1, v2;
     int volume_count=0;
-    //Volume v_prec;
-    //bool volume_check=false;
-    //Volume v2;
 
 
     //fusionner les deux boucles
@@ -384,31 +381,15 @@ void Viewer::MakeFromSkel(const std::vector<Vec4>& Squelette)
 
     for(int m = 1 ; m < nb_articulation-1 ; m++)
     {
-
-        //v1.dart = map_.phi2(map_.phi1(map_.phi1(map_.phi2(map_.phi_1(volume_control[m-1])))));
-        //v1.dart = map_.phi2(map_.phi1(map_.phi1(map_.phi2(map_.phi_1(volume_control[m-1])))));
-        //v2.dart = volume_control[m];
-        //v1.dart = map_.phi2(map_.phi1(volume_control[m-1]));
-        //v2.dart = map_.phi2(map_.phi_1(volume_control[m]));
-
-        //v1.dart = map_.phi_1(map_.phi2(map_.phi1(map_.phi1(volume_control[m-1]))));
-        //v1.dart = map_.phi2(map_.phi1(map_.phi1(volume_control[m-1])));
-        //v2.dart = map_.phi2(volume_control[m]);
-
-
-        //v1.dart = map_.phi1(map_.phi2(map_.phi_1(volume_control[m-1])));
-        //v2.dart = map_.phi2(map_.phi1(volume_control[m]));
-
-        //v1.dart = volume_control[m-1];
-        v1.dart = volume_control[m-1];
+        v1.dart = map_.phi2(map_.phi1(map_.phi1(map_.phi2(volume_control[m-1]))));
         v2.dart = volume_control[m];
-
 
         mbuild.sew_volumes(v1, v2);
 
     }
 
     mbuild.close_map(); //reboucle les volumes en bord de map
+
 
     map_.foreach_cell([&] (Volume v){
 
@@ -420,26 +401,58 @@ void Viewer::MakeFromSkel(const std::vector<Vec4>& Squelette)
 
 
 
-
-
     //Les vertices vont être indexe automatiquement & creation d'un de leur attribut, position dans l espace 3D
     vertex_position_ = map_.add_attribute<Vec3, Vertex::ORBIT>("position");
     vertex_position2_ = map_.add_attribute<Vec3, Vertex::ORBIT>("position2");
     vertex_normal_ = map_.add_attribute<Vec3, Vertex::ORBIT>("normal");
 
-
-
     int count=0;
     double TermeX, TermeY, TermeZ ;
     unsigned int face_count=0;
-    //unsigned int face_count_abs=0;
-    //bool next_volume= false;
+    Dart last=volume_control[volume_control.size()-1];
+    Face F_end(map_.phi2(map_.phi1(map_.phi1(map_.phi2(map_.phi_1(last))))));
 
-    //map_.foreach_adjacent_volume_through_face;
-    //map_.foreach_adjacent_face_through_volume;
-    //map_.foreach_incident_face();
+    for(Dart d : volume_control)
+    {
+        count = 0;
+        Face F(d);
+
+        map_.foreach_incident_vertex(F, [&] (Vertex v)
+        {
 
 
+            TermeX = Squelette[0 + face_count](0) + Squelette[0 + face_count](3) + Squelette[0 + face_count](3)*(-1.5)*count*(2-count) + Squelette[0 + face_count](3)*(-0.75)*count*(count-1);
+            TermeY = Squelette[0 + face_count](1) + Squelette[0 + face_count](3)*0.87*count*(2-count) - Squelette[0 + face_count](3)*0.435*count*(count-1);
+            TermeZ = Squelette[0 + face_count](2);
+
+            vertex_position_[v] = { TermeX, TermeY, TermeZ };
+            std::cout  << "  a l iteration  " << face_count*3 + count << "  On a  " << vertex_position_[v] << std::endl;
+
+            count++;
+        });
+
+        face_count++;
+
+    }
+
+
+    count =0;
+    map_.foreach_incident_vertex(F_end, [&] (Vertex v_end){
+
+            TermeX = Squelette[0 + face_count](0) + Squelette[0 + face_count](3) + Squelette[0 + face_count](3)*(-0.75)*count*(count-1) + Squelette[0 + face_count](3)*(-1.5)*count*(2-count);
+            TermeY = Squelette[0 + face_count](1) + Squelette[0 + face_count](3)*0.435*count*(count-1) - Squelette[0 + face_count](3)*0.87*count*(2-count);
+            TermeZ = Squelette[0 + face_count](2);
+
+            vertex_position_[v_end] = { TermeX, TermeY, TermeZ };
+            std::cout  << "  a l iteration  " << face_count*3 + count << "  On a  " << vertex_position_[v_end] << std::endl;
+
+            count++;
+    });
+
+
+
+
+    /*
     map_.foreach_cell([&](Face f){
 
         count=0;
@@ -462,16 +475,17 @@ void Viewer::MakeFromSkel(const std::vector<Vec4>& Squelette)
                 vertex_position_[count + 3 * face_count] = { TermeX , TermeY, TermeZ };
 
                 count++;
+
             });
 
-            /*
+
             if(!(face_count % 2) || next_volume)
             {
                 face_count++;
                 next_volume = false;
             }
             else
-                next_volume = !next_volume;*/
+                next_volume = !next_volume;
 
             //face_count_abs++;
             face_count++;
@@ -480,12 +494,13 @@ void Viewer::MakeFromSkel(const std::vector<Vec4>& Squelette)
 
 
 
-    });
+    });*/
 
+    /*
     for (int i= 0; i<(face_count)*3; i++)
-        std::cout << vertex_position_[i] << std::endl;
+        std::cout << vertex_position_[i] << std::endl;*/
 
-    std::cout << face_count << std::endl;
+    std::cout << "face count " << face_count << std::endl;
     //bounding boxe et scene parameters
 
     cgogn::geometry::compute_bounding_box(vertex_position_, bb_);
@@ -850,14 +865,22 @@ int main(int argc, char** argv)
 	Viewer viewer;
 	viewer.setWindowTitle("simpleViewer");
     std::vector<Vec4> Squelette;
+
     Vec4 V40(0.0, 0.0, 0.0, 1.0);
-    Vec4 V41(0.0, 0.0, 2.0, 1.0);
+    Vec4 V41(0.0, 0.0, 2.0, 2.0);
     Vec4 V42(0.0, 0.0, 3.0, 1.0);
-    //Vec4 V43(0.0, 0.0, 4.0, 1.0);
+    Vec4 V43(0.0, 0.0, 4.0, 1.0);
+    Vec4 V44(0.5, 0.5, 5.0, 1.0);
+    Vec4 V45(0.0, 0.5, 7.0, 1.0);
+    //Vec4 V46(3.0, 1.0, 9.0, 1.0);
+
     Squelette.push_back(V40);
     Squelette.push_back(V41);
     Squelette.push_back(V42);
-    //Squelette.push_back(V43);
+    Squelette.push_back(V43);
+    Squelette.push_back(V44);
+    Squelette.push_back(V45);
+    //Squelette.push_back(V46);
 
     //viewer.import(volume_mesh);//methode a remplacer, on ne cherchera plus a creer à partir d'un fichier
     viewer.MakeFromSkel(Squelette);

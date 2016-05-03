@@ -50,6 +50,8 @@
 #include <cgogn/geometry/algos/normal.h>
 #include <cgogn/geometry/algos/filtering.h>
 
+#include <branch.h>
+
 using Map3 = cgogn::CMap3<cgogn::DefaultMapTraits>;
 using Vertex = typename Map3::Vertex;
 using Edge = typename Map3::Edge;
@@ -61,11 +63,6 @@ using Dart = cgogn::Dart;
 using Vec3 = Eigen::Vector3d;
 using Vec4 = Eigen::Vector4d;
 
-//static const unsigned int CHUNK_SIZE = cgogn::DefaultMapTraits::CHUNK_SIZE;
-
-//using ChunkArray = cgogn::ChunkArray<CHUNK_SIZE, T>;
-//using ChunkArrayContainer = cgogn::ChunkArrayContainer<CHUNK_SIZE, unsigned int >;
-
 
 template <typename T>
 using VertexAttribute = Map3::VertexAttribute<T>;
@@ -74,8 +71,6 @@ using MapBuilder = cgogn::CMap3Builder_T<Map3::MapTraits>;
 class Viewer : public QOGLViewer
 {
 public:
-
-
 
 	Viewer();
 	Viewer(const Viewer&) = delete;
@@ -87,18 +82,14 @@ public:
 
 	virtual void keyPressEvent(QKeyEvent *);
     void import(const std::string& volume_mesh);
-    void MakeFromSkel(const std::vector<Vec4>& Squelette);
+    void MakeFromBranch(const std::vector<Vec4>& branche);
+    //void OrientationFromSkel
 	virtual ~Viewer();
 	virtual void closeEvent(QCloseEvent *e);
 
 private:
 
     Map3 map_;
-
-    //ChunkArrayContainer vertex_attributes_;
-    //ChunkArrayContainer volume_attributes_;
-
-    //std::vector<unsigned int> volumes_vertex_indices_;
 
 	VertexAttribute<Vec3> vertex_position_;
 	VertexAttribute<Vec3> vertex_position2_;
@@ -176,20 +167,8 @@ void Viewer::import(const std::string& volume_mesh)
 	showEntireScene();
 }
 
-void Viewer::MakeFromSkel(const std::vector<Vec4>& Squelette)
+void Viewer::MakeFromBranch(const std::vector<Vec4>& branche)
 {
-
-    //
-    //  Brouillon
-    //
-
-    /*
-
-    vertex_position_[v1] = { Squelette[0](0) + Squelette[0](3) , Squelette[0](1), Squelette[0](2) };
-    vertex_position_[v1] = { Squelette[0](0) + Squelette[0](3)*(-0.5) , Squelette[0](1) + Squelette[0](3)*(0.87), Squelette[0](2) };
-    vertex_position_[v1] = { Squelette[0](0) + Squelette[0](3)*(-0.5) , Squelette[0](1) + Squelette[0](3)*(-0.87), Squelette[0](2) };
-    */
-
     /*
     //Vertex S = map_.add_vertex(); //sera à tester
     //Vertex v(d);
@@ -235,50 +214,6 @@ void Viewer::MakeFromSkel(const std::vector<Vec4>& Squelette)
             } while(dd != dv);
         }
     */
-
-    /***************************************/
-    //Méthode de test 1
-    /*
-    int count=0;
-    map_.foreach_dart([&] (Dart da){
-        count++;
-    });
-    std::cout<< count<< std::endl;
-    count = 0;
-    map_.foreach_cell([&](Edge e){
-        count++;
-        //OK;
-    });
-    std::cout<< count<< std::endl;
-    count = 0;
-    map_.foreach_cell([&](Face f){
-        count++;
-        //OK
-    });
-    std::cout<< count<< std::endl;
-    count = 0;
-    map_.foreach_cell([&](Volume w){
-        count++;
-        //OK
-    });
-    std::cout<< count<< std::endl;
-    count = 0;
-    map_.foreach_cell([&](Vertex v){
-        count++;
-        //FAILED => 1
-    });
-    std::cout<< count<< std::endl;
-    count = 0;
-    map_.foreach_cell([&](Vertex v1){
-        count++;
-        map_.foreach_adjacent_vertex_through_edge(v1, [&] (Vertex v){
-            //count++;
-            //FAILED => 9
-        });
-    });
-    std::cout<< count<<std::endl;
-    */
-
 
     /***************************************/
     //Méthode de test 2
@@ -327,12 +262,11 @@ void Viewer::MakeFromSkel(const std::vector<Vec4>& Squelette)
     cgogn_log_info("map3_from_image") << "nb faces -> " << nbf;
     cgogn_log_info("map3_from_image") << "nb volumes -> " << nbw;*/
 
-
     //iterator & const ref
     /*
     int C1;
-     std::vector<Vec4> cpy_Squelette = Squelette;
-    for(std::vector<Vec4>::iterator it = cpy_Squelette.begin(); it != cpy_Squelette.end(); ++it) {
+     std::vector<Vec4> cpy_Branch = Branch;
+    for(std::vector<Vec4>::iterator it = cpy_Branch.begin(); it != cpy_Branch.end(); ++it) {
         C1++;
         Dart d = mbuild.add_prism_topo(3u);
     }
@@ -340,44 +274,22 @@ void Viewer::MakeFromSkel(const std::vector<Vec4>& Squelette)
     */
 
 
-
+    //Declaration/initialisation des variables
     MapBuilder mbuild(map_);
-    int nb_articulation = Squelette.size();
-
-
+    int nb_articulation = branche.size();
     std::vector<Dart> volume_control;
-    Dart it1;
-    Dart it2;
-    Dart begin;
     Volume v1, v2;
     int volume_count=0;
+    unsigned int face_count = 0;
+    int count = 0;
+    double TermeX, TermeY, TermeZ ;
 
 
-    //fusionner les deux boucles
+    //fusionner les deux boucles si possible
     for(int n = 1 ; n < nb_articulation ; n++)
     {
         volume_control.push_back(mbuild.add_prism_topo(3u));//construit le prisme et renvoi un dart du prisme d'une des faces triangulaires, rendant un parcourt du prisme possible
     }
-
-
-/*
-    for(int m = 1 ; m < nb_articulation ; m++)
-    {
-        it1 = volume_control[m-1];
-        it2 = volume_control[m];
-
-        begin=it1;
-
-        do
-        {
-            map_.phi3_sew(it1, it2);
-            it1 = map_.phi1(it1);
-            it2 = map_.phi_1(it2);
-        } while (it1 != begin);
-
-
-    }*/
-
 
     for(int m = 1 ; m < nb_articulation-1 ; m++)
     {
@@ -391,27 +303,15 @@ void Viewer::MakeFromSkel(const std::vector<Vec4>& Squelette)
     mbuild.close_map(); //reboucle les volumes en bord de map
 
 
-    map_.foreach_cell([&] (Volume v){
-
-        volume_count++;
-
-    });
-
-    std::cout << volume_count << std::endl; //deux volumes => ok
-
+    map_.foreach_cell([&] (Volume v){ volume_count++; }); // affichage du nombre de volumes
+    std::cout << " Il y a " << volume_count << " Volume(s)" << std::endl;
 
 
     //Les vertices vont être indexe automatiquement & creation d'un de leur attribut, position dans l espace 3D
     vertex_position_ = map_.add_attribute<Vec3, Vertex::ORBIT>("position");
-    vertex_position2_ = map_.add_attribute<Vec3, Vertex::ORBIT>("position2");
     vertex_normal_ = map_.add_attribute<Vec3, Vertex::ORBIT>("normal");
 
-    int count=0;
-    double TermeX, TermeY, TermeZ ;
-    unsigned int face_count=0;
-    Dart last=volume_control[volume_control.size()-1];
-    Face F_end(map_.phi2(map_.phi1(map_.phi1(map_.phi2(map_.phi_1(last))))));
-
+    //On attribut des positions aux sommets des faces du squelette
     for(Dart d : volume_control)
     {
         count = 0;
@@ -419,90 +319,34 @@ void Viewer::MakeFromSkel(const std::vector<Vec4>& Squelette)
 
         map_.foreach_incident_vertex(F, [&] (Vertex v)
         {
-
-
-            TermeX = Squelette[0 + face_count](0) + Squelette[0 + face_count](3) + Squelette[0 + face_count](3)*(-1.5)*count*(2-count) + Squelette[0 + face_count](3)*(-0.75)*count*(count-1);
-            TermeY = Squelette[0 + face_count](1) + Squelette[0 + face_count](3)*0.87*count*(2-count) - Squelette[0 + face_count](3)*0.435*count*(count-1);
-            TermeZ = Squelette[0 + face_count](2);
+            TermeX = branche[0 + face_count](0) + branche[0 + face_count](3) + branche[0 + face_count](3)*(-1.5)*count*(2-count) + branche[0 + face_count](3)*(-0.75)*count*(count-1);
+            TermeY = branche[0 + face_count](1) + branche[0 + face_count](3)*0.87*count*(2-count) - branche[0 + face_count](3)*0.435*count*(count-1);
+            TermeZ = branche[0 + face_count](2);
 
             vertex_position_[v] = { TermeX, TermeY, TermeZ };
-            std::cout  << "  a l iteration  " << face_count*3 + count << "  On a  " << vertex_position_[v] << std::endl;
 
             count++;
         });
 
         face_count++;
-
     }
 
-
+    // Ici, on gere la derniere face
+    Dart last=volume_control[volume_control.size()-1];
+    Face F_end(map_.phi2(map_.phi1(map_.phi1(map_.phi2(map_.phi_1(last))))));
     count =0;
     map_.foreach_incident_vertex(F_end, [&] (Vertex v_end){
 
-            TermeX = Squelette[0 + face_count](0) + Squelette[0 + face_count](3) + Squelette[0 + face_count](3)*(-0.75)*count*(count-1) + Squelette[0 + face_count](3)*(-1.5)*count*(2-count);
-            TermeY = Squelette[0 + face_count](1) + Squelette[0 + face_count](3)*0.435*count*(count-1) - Squelette[0 + face_count](3)*0.87*count*(2-count);
-            TermeZ = Squelette[0 + face_count](2);
+            TermeX = branche[0 + face_count](0) + branche[0 + face_count](3) + branche[0 + face_count](3)*(-0.75)*count*(count-1) + branche[0 + face_count](3)*(-1.5)*count*(2-count);
+            TermeY = branche[0 + face_count](1) + branche[0 + face_count](3)*0.435*count*(count-1) - branche[0 + face_count](3)*0.87*count*(2-count);
+            TermeZ = branche[0 + face_count](2);
 
             vertex_position_[v_end] = { TermeX, TermeY, TermeZ };
-            std::cout  << "  a l iteration  " << face_count*3 + count << "  On a  " << vertex_position_[v_end] << std::endl;
 
             count++;
     });
 
-
-
-
-    /*
-    map_.foreach_cell([&](Face f){
-
-        count=0;
-
-        //à refaire en utilisant Cell_Cache + iterator et/ou en rajoutant un filtre au foreach
-        map_.foreach_incident_vertex(f,[&](Vertex v){
-            count++;
-        });
-        std::cout << count << std::endl;
-        if(count == 3)
-        {
-            count = 0;
-            map_.foreach_incident_vertex(f,[&](Vertex v1){
-
-                TermeX = Squelette[0 + face_count](0) + Squelette[0 + face_count](3) + Squelette[0 + face_count](3)*(-1.5)*count*(2-count) + Squelette[0 + face_count](3)*(-0.75)*count*(count-1);
-                TermeY = Squelette[0 + face_count](1) + Squelette[0 + face_count](3)*0.87*count*(2-count) - Squelette[0 + face_count](3)*0.435*count*(count-1);
-                TermeZ = Squelette[0 + face_count](2);
-
-                //vertex_position_[count + 3 * face_count_abs] = { TermeX , TermeY, TermeZ };
-                vertex_position_[count + 3 * face_count] = { TermeX , TermeY, TermeZ };
-
-                count++;
-
-            });
-
-
-            if(!(face_count % 2) || next_volume)
-            {
-                face_count++;
-                next_volume = false;
-            }
-            else
-                next_volume = !next_volume;
-
-            //face_count_abs++;
-            face_count++;
-        }
-        else{ count = 0; }
-
-
-
-    });*/
-
-    /*
-    for (int i= 0; i<(face_count)*3; i++)
-        std::cout << vertex_position_[i] << std::endl;*/
-
-    std::cout << "face count " << face_count << std::endl;
     //bounding boxe et scene parameters
-
     cgogn::geometry::compute_bounding_box(vertex_position_, bb_);
     setSceneRadius(bb_.diag_size()/2.0);
     Vec3 center = bb_.center();
@@ -847,7 +691,7 @@ void Viewer::update_bb()
 int main(int argc, char** argv)
 {
 
-
+    Branch branche;
 
     std::string volume_mesh;
 	if (argc < 2)
@@ -864,26 +708,9 @@ int main(int argc, char** argv)
 	// Instantiate the viewer.
 	Viewer viewer;
 	viewer.setWindowTitle("simpleViewer");
-    std::vector<Vec4> Squelette;
-
-    Vec4 V40(0.0, 0.0, 0.0, 1.0);
-    Vec4 V41(0.0, 0.0, 2.0, 2.0);
-    Vec4 V42(0.0, 0.0, 3.0, 1.0);
-    Vec4 V43(0.0, 0.0, 4.0, 1.0);
-    Vec4 V44(0.5, 0.5, 5.0, 1.0);
-    Vec4 V45(0.0, 0.5, 7.0, 1.0);
-    //Vec4 V46(3.0, 1.0, 9.0, 1.0);
-
-    Squelette.push_back(V40);
-    Squelette.push_back(V41);
-    Squelette.push_back(V42);
-    Squelette.push_back(V43);
-    Squelette.push_back(V44);
-    Squelette.push_back(V45);
-    //Squelette.push_back(V46);
 
     //viewer.import(volume_mesh);//methode a remplacer, on ne cherchera plus a creer à partir d'un fichier
-    viewer.MakeFromSkel(Squelette);
+    viewer.MakeFromBranch(branche.articulations_);
 
     viewer.show();
 

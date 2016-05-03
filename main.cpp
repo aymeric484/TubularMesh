@@ -276,6 +276,7 @@ void Viewer::MakeFromBranch(const std::vector<Vec4>& branche)
 
     //Declaration/initialisation des variables
     MapBuilder mbuild(map_);
+
     int nb_articulation = branche.size();
     std::vector<Dart> volume_control;
     Volume v1, v2;
@@ -692,6 +693,7 @@ int main(int argc, char** argv)
 {
 
     Branch branche;
+    branche.GetAxisFromBranch();
 
     std::string volume_mesh;
 	if (argc < 2)

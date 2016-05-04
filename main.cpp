@@ -83,6 +83,7 @@ public:
 	virtual void keyPressEvent(QKeyEvent *);
     void import(const std::string& volume_mesh);
     void MakeFromBranch(const std::vector<Vec4>& branche);
+    void MakeFromBranch(const std::vector<Vec4>& branche, const std::vector<Vec3>& positions, const unsigned int& primitives);
     //void OrientationFromSkel
 	virtual ~Viewer();
 	virtual void closeEvent(QCloseEvent *e);
@@ -166,6 +167,87 @@ void Viewer::import(const std::string& volume_mesh)
 	setSceneCenter(qoglviewer::Vec(center[0], center[1], center[2]));
 	showEntireScene();
 }
+
+
+void Viewer::MakeFromBranch(const std::vector<Vec4>& branche, const std::vector<Vec3>& positions, const unsigned int& primitives)
+{
+    MapBuilder mbuild(map_);
+
+    int nb_articulation = branche.size();
+    std::vector<Dart> volume_control;
+    Volume v1, v2;
+    int volume_count=0;
+    unsigned int face_count = 0;
+    int count = 0;
+
+
+    //fusionner les deux boucles si possible
+    for(int n = 1 ; n < nb_articulation ; n++)
+    {
+        volume_control.push_back(mbuild.add_prism_topo(3u));//construit le prisme et renvoi un dart du prisme d'une des faces triangulaires, rendant un parcourt du prisme possible
+    }
+
+
+    for(int m = 1 ; m < nb_articulation-1 ; m++)
+    {
+        v1.dart = map_.phi2(map_.phi1(map_.phi1(map_.phi2(volume_control[m-1]))));
+        v2.dart = volume_control[m];
+
+        mbuild.sew_volumes(v1, v2);
+
+    }
+
+    mbuild.close_map(); //reboucle les volumes en bord de map
+
+
+    map_.foreach_cell([&] (Volume v){ volume_count++; }); // affichage du nombre de volumes
+    std::cout << " Il y a " << volume_count << " Volume(s)" << std::endl;
+
+
+    //Les vertices vont être indexe automatiquement & creation d'un de leur attribut, position dans l espace 3D
+    vertex_position_ = map_.add_attribute<Vec3, Vertex::ORBIT>("position");
+    vertex_normal_ = map_.add_attribute<Vec3, Vertex::ORBIT>("normal");
+
+
+
+    //On attribut des positions aux sommets des faces du squelette
+    for(Dart d : volume_control)
+    {
+        count = 0;
+        Face F(d);
+
+        map_.foreach_incident_vertex(F, [&] (Vertex v)
+        {
+            vertex_position_[v] = positions[face_count * primitives + count];
+            count++;
+        });
+
+        face_count++;
+    }
+
+    // Ici, on gere la derniere face
+    Dart last=volume_control[volume_control.size()-1];
+    Face F_end(map_.phi2(map_.phi1(map_.phi1(map_.phi2(map_.phi_1(last))))));
+    count =0;
+    map_.foreach_incident_vertex(F_end, [&] (Vertex v_end){
+
+            if(count==0)
+                vertex_position_[v_end] = { positions[face_count * primitives + count][0], positions[face_count * primitives + count][1], positions[face_count * primitives + count][2] };
+            else
+                vertex_position_[v_end] = { positions[face_count * primitives + primitives - count][0], positions[face_count * primitives + primitives - count][1], positions[face_count * primitives + primitives - count][2] };
+
+            count++;
+    });
+
+    //bounding boxe et scene parameters
+    cgogn::geometry::compute_bounding_box(vertex_position_, bb_);
+    setSceneRadius(bb_.diag_size()/2.0);
+    Vec3 center = bb_.center();
+    setSceneCenter(qoglviewer::Vec(center[0], center[1], center[2]));
+    showEntireScene();
+
+}
+
 
 void Viewer::MakeFromBranch(const std::vector<Vec4>& branche)
 {
@@ -325,6 +407,7 @@ void Viewer::MakeFromBranch(const std::vector<Vec4>& branche)
             TermeZ = branche[0 + face_count](2);
 
             vertex_position_[v] = { TermeX, TermeY, TermeZ };
+            //vertex_position_[v] = TriangleCoord[face_count*3 + count]
 
             count++;
         });
@@ -693,7 +776,8 @@ int main(int argc, char** argv)
 {
 
     Branch branche;
-    branche.GetAxisFromBranch();
+    branche.ComputeMatrixFromBranch();
+    branche.CreateTrianglesCoordinates(3);
 
     std::string volume_mesh;
 	if (argc < 2)
@@ -713,6 +797,7 @@ int main(int argc, char** argv)
 
     //viewer.import(volume_mesh);//methode a remplacer, on ne cherchera plus a creer à partir d'un fichier
     viewer.MakeFromBranch(branche.articulations_);
+    //viewer.MakeFromBranch(branche.articulations_, branche.pos_vertices_, 3);
 
     viewer.show();
 

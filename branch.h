@@ -11,6 +11,10 @@
 
 #include <cgogn/io/map_import.h>
 
+//#include <QMatrix4x4>
+//    const double Pi = 3.14159265359;
+
+#define Pi  3.14159265359
 
 using Vec3 = Eigen::Vector3d;
 using Vec4 = Eigen::Vector4d;
@@ -23,14 +27,14 @@ public:
     Branch();   //constructor
     // Branch(squelette S, std::vector<int> ind); devrait nous permettre l'extraction des branches d'un squelette grace aux indices des articulations concernees
 
-    void GetAxisFromBranch(); //Nous donnes les 3 axes T,N,B pour chaque articulation
+    void CreateTrianglesCoordinates(const unsigned int&);
+    void ComputeMatrixFromBranch(); //Nous donnes les 3 axes T,N,B pour chaque articulation et la matrice de changement de repère
 
 
     std::vector<Vec4> articulations_;
+    std::vector<Vec3> pos_vertices_;
 
-    std::vector<Vec3> T_axis_;
-    std::vector<Vec3> N_axis_;
-    std::vector<Vec3> B_axis_;
+
 
     std::vector<float> courbure_;
     std::vector<float> torsion_; // pas vraiment necessaire il semblerait
@@ -43,12 +47,20 @@ public:
 
     unsigned int branch_size_;
 
+
 private:
 
     // ces 3 méthodes peuvent être implémenté en utilisant une définition différente de la dérivation
     void ComputeT(); // determine les tangentes en chaque articulation et normalise
     void ComputeN(); // determine les normales en chaque articulation et normalise
     void ComputeB(); // idem pour B
+
+
+    std::vector<Eigen::Matrix4d> NBT_to_xyz_;
+
+    std::vector<Vec3> T_axis_;
+    std::vector<Vec3> N_axis_;
+    std::vector<Vec3> B_axis_;
 
 };
 

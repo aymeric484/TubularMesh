@@ -3,15 +3,15 @@
 
 Branch::Branch()
 {
-    Vec4 V40(0.1, 2.0, 1.0, 1.0);
-    Vec4 V41(0.0, 0.3, 2.0, 2.0);
-    Vec4 V42(0.3, 0.0, 3.0, 1.0);
-    Vec4 V43(0.0, 0.0, 4.0, 1.0);
-    Vec4 V44(0.5, 0.5, 5.0, 1.0);
-    Vec4 V45(0.0, 0.5, 7.0, 1.0);
+    Vec4 V40(0.0, 0.0, 1.0, 1.0);
+    Vec4 V41(0.0, 1.0, 4.0, 1.0);
+    Vec4 V42(0.0, 3.0, 6.0, 1.0);
+    Vec4 V43(0.0, 2.0, 9.0, 1.0);
+    Vec4 V44(1.0, 4.0, 11.0, 1.0);
+    Vec4 V45(0.0, 3.0, 14.0, 1.0);
 
-    Vec4 V_externe_begin(0.0, 0.0, 0.0, 1.0);
-    Vec4 V_externe_end(0.5, 0.5, 8.0, 1.0);
+    Vec4 V_externe_begin(0.0, 0.0, 0.0, 2.0);
+    Vec4 V_externe_end(0.5, 2.5, 8.0, 2.0);
 
     articulations_.push_back(V40);
     articulations_.push_back(V41);
@@ -28,23 +28,52 @@ Branch::Branch()
 }
 
 
+void Branch::CreateTrianglesCoordinates(const unsigned int& primitive_size)
+{
+    Vec4 coord4_int;
+    double TermeN, TermeB, TermeT;
 
-void Branch::GetAxisFromBranch()
+    for(int i = 0; i < branch_size_; i++)
+    {
+        for(int j = 0; j < primitive_size; j++)
+        {
+            TermeN = std::cos(2*Pi/primitive_size*j)*articulations_[i][3];
+            TermeB = std::sin(2*Pi/primitive_size*j)*articulations_[i][3];
+            TermeT = 0;
+            coord4_int = {TermeN, TermeB, TermeT, 1}; //coordonées dans le repère local
+            coord4_int = NBT_to_xyz_[i]*coord4_int; // coordonées dans le repère d'origine
+            pos_vertices_.push_back(coord4_int.head<3>());
+        }
+    }
+}
+
+
+void Branch::ComputeMatrixFromBranch()
 {
     ComputeT();
     ComputeN();
     ComputeB();
 
-    /*
+    Eigen::Matrix4d M;
+    // M(indice_ligne, indice_colonne)
+
+    // Le repère est (N,B,T) ; le cercle se trouvera dans le plan (articulation[i], N[i], B(i))
+
     for(int i = 0; i < branch_size_; i++)
     {
+        M << N_axis_[i][0], B_axis_[i][0], T_axis_[i][0], articulations_[i][0],
+             N_axis_[i][1], B_axis_[i][1], T_axis_[i][1], articulations_[i][1],
+             N_axis_[i][2], B_axis_[i][2], T_axis_[i][2], articulations_[i][2],
+                  0       ,      0       ,      0       ,      1               ;
+
+        NBT_to_xyz_.push_back(M);
+
         std::cout << " iteration " << i << std::endl;
         std::cout << " tangente " << T_axis_[i][0] << " ; " << T_axis_[i][1] << " ; " << T_axis_[i][2] << std::endl;
         std::cout << " normale " << N_axis_[i][0] << " ; " << N_axis_[i][1] << " ; " << N_axis_[i][2] << std::endl;
-        std::cout << " B " << B_axis_[i][0] << " ; " << B_axis_[i][1] << " ; " << B_axis_[i][2] << std::endl;
+        std::cout << " Bitangente " << B_axis_[i][0] << " ; " << B_axis_[i][1] << " ; " << B_axis_[i][2] << std::endl;
         std::cout << " courbure " << courbure_[i] << std::endl;
-    }*/
-
+    }
 
 }
 
@@ -89,7 +118,7 @@ void Branch::ComputeN()
     for( int i = 1; i < branch_size_ - 1; i++ )
     {
         //normalisation de la tangente T(i-1)
-        normalized_tan_prec = articulations_[i-1].head<3>() - articulations_[i].head<3>();
+        normalized_tan_prec = articulations_[i].head<3>() - articulations_[i-1].head<3>();
         normalized_tan_prec = normalized_tan_prec/sqrt(normalized_tan_prec[0] * normalized_tan_prec[0] + normalized_tan_prec[1] * normalized_tan_prec[1] + normalized_tan_prec[2] * normalized_tan_prec[2]);
         //normalisation de la tangente T(i)
         normalized_tan_suiv = articulations_[i+1].head<3>() - articulations_[i].head<3>();

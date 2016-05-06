@@ -45,7 +45,7 @@ public:
     //vec4 articulation_externe2_begin;
     //vec4 articulation_externe2_end;
 
-    unsigned int branch_size_;
+
 
 
 private:
@@ -53,7 +53,7 @@ private:
     // ces 3 méthodes peuvent être implémenté en utilisant une définition différente de la dérivation
     void ComputeT(); // determine les tangentes en chaque articulation et normalise
     void ComputeN(); // determine les normales en chaque articulation et normalise
-    void ComputeB(); // idem pour B
+    void ComputeB(); // idem pour Bitangentes
 
 
     std::vector<Eigen::Matrix4d> NBT_to_xyz_;
@@ -62,6 +62,7 @@ private:
     std::vector<Vec3> N_axis_;
     std::vector<Vec3> B_axis_;
 
+    unsigned int branch_size_;
 };
 
 

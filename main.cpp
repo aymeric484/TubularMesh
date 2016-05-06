@@ -194,7 +194,6 @@ void Viewer::MakeFromBranch(const std::vector<Vec4>& branche, const std::vector<
         v2.dart = volume_control[m];
 
         mbuild.sew_volumes(v1, v2);
-
     }
 
     mbuild.close_map(); //reboucle les volumes en bord de map
@@ -796,8 +795,8 @@ int main(int argc, char** argv)
 	viewer.setWindowTitle("simpleViewer");
 
     //viewer.import(volume_mesh);//methode a remplacer, on ne cherchera plus a creer à partir d'un fichier
-    viewer.MakeFromBranch(branche.articulations_);
-    //viewer.MakeFromBranch(branche.articulations_, branche.pos_vertices_, 3);
+    //viewer.MakeFromBranch(branche.articulations_);
+    viewer.MakeFromBranch(branche.articulations_, branche.pos_vertices_, 3);
 
     viewer.show();
 

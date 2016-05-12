@@ -50,6 +50,7 @@
 #include <cgogn/geometry/algos/normal.h>
 #include <cgogn/geometry/algos/filtering.h>
 
+
 #include <branch.h>
 
 using Map3 = cgogn::CMap3<cgogn::DefaultMapTraits>;
@@ -130,7 +131,6 @@ private:
 };
 
 
-
 //
 // IMPLEMENTATION
 //
@@ -167,7 +167,6 @@ void Viewer::import(const std::string& volume_mesh)
 	setSceneCenter(qoglviewer::Vec(center[0], center[1], center[2]));
 	showEntireScene();
 }
-
 
 void Viewer::MakeFromBranch(const std::vector<Vec4>& branche, const std::vector<Vec3>& positions, const unsigned int& primitives)
 {
@@ -238,6 +237,8 @@ void Viewer::MakeFromBranch(const std::vector<Vec4>& branche, const std::vector<
             count++;
     });
 
+    map_.check_map_integrity();
+
     //bounding boxe et scene parameters
     cgogn::geometry::compute_bounding_box(vertex_position_, bb_);
     setSceneRadius(bb_.diag_size()/2.0);
@@ -246,7 +247,6 @@ void Viewer::MakeFromBranch(const std::vector<Vec4>& branche, const std::vector<
     showEntireScene();
 
 }
-
 
 void Viewer::MakeFromBranch(const std::vector<Vec4>& branche)
 {
@@ -775,6 +775,7 @@ int main(int argc, char** argv)
 {
 
     Branch branche;
+    branche.SubdiBranch(0.45);
     branche.ComputeMatrixFromBranch();
     branche.CreateTrianglesCoordinates(3);
 

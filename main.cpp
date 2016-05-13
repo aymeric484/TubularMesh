@@ -775,7 +775,7 @@ int main(int argc, char** argv)
 {
 
     Branch branche;
-    branche.SubdiBranch(0.45);
+    branche.SubdiBranch(0.30);
     branche.ComputeMatrixFromBranch();
     branche.CreateTrianglesCoordinates(3);
 

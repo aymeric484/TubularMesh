@@ -32,7 +32,7 @@ Branch::Branch()
     */
 
 
-    Vec4 V_externe_begin(0.0, 0.0, 0.0, 4.0);
+    Vec4 V_externe_begin(0.0, 0.0, 0.0, 6.0);
     Vec4 Vprec = V_externe_begin;
     Vec4 Vcourant;
     Vec4 Vrand;
@@ -43,38 +43,39 @@ Branch::Branch()
 
     srand(time(NULL));
     int i_end = rand() % 10 + 3;
-    for(int i = 0; i < 9; i++ )
+    for(int i = 0; i < 8; i++ )
     {
 
-        rand1=(rand() % 20000 + 20);
+        rand1=(rand() % 20000 + 200);
         frac1 = 1/(double)rand1*2000;
-        rand2=(rand() % 20000 + 20);
+        rand2=(rand() % 20000 + 200);
         frac2 = 1/(double)rand2*2000;
-        rand3=(rand() % 20000 + 20);
+        rand3=(rand() % 20000 + 200);
         frac3 = 1/(double)rand3*2000;
         Vrand[0] = frac1;
         Vrand[1] = frac2;
         Vrand[2] = frac3 + 5;
         Vrand[3] = 2;
         Vcourant = Vprec + Vrand;
-        Vcourant[3] = 4;
+        Vcourant[3] = 6;
+        std::cout << " Point numero " << i << "  X =" << Vcourant[0] << "  Y =" << Vcourant[1] << "  Z =" << Vcourant[2] << std::endl;
         articulations_.push_back(Vcourant);
         Vprec = Vcourant;
 
     }
 
-    rand1=(rand() % 20000 + 20);
+    rand1=(rand() % 20000 + 200);
     frac1 = 1/(double)rand1*2000;
-    rand2=(rand() % 20000 + 20);
+    rand2=(rand() % 20000 + 200);
     frac2 = 1/(double)rand2*2000;
-    rand3=(rand() % 20000 + 20);
+    rand3=(rand() % 20000 + 200);
     frac3 = 1/(double)rand3*2000;
     Vrand[0] = frac1;
     Vrand[1] = frac2;
     Vrand[2] = frac3 + 5;
     Vrand[3] = 2;
     articulation_externe_end_ = Vcourant + Vrand;
-    articulation_externe_end_[3]= 4;
+    articulation_externe_end_[3]= 6;
     articulation_externe_begin_ = V_externe_begin;
     //articulation_externe_end_ = V_externe_end;
 
@@ -82,7 +83,7 @@ Branch::Branch()
 
 }
 
-// cette méthode vient forcement apres compute matrix from branch
+// surveiller l'appel à ComputeMatrixFromBranch
 void Branch::SubdiBranch(const double& seuil)
 {
     std::vector<Vec4> points_inter;
@@ -95,6 +96,10 @@ void Branch::SubdiBranch(const double& seuil)
 
     Vec4 joint;
     Vec4 nouv_arti;
+
+    Vec3 AB; // segment central
+    Vec3 AA; // tangente precedant A
+    Vec3 BB; // opposé de tangente suivant B
 
     bool modif = true;
     ComputeMatrixFromBranch();
@@ -185,15 +190,28 @@ void Branch::SubdiBranch(const double& seuil)
             size_courbure = courbure_.size();
             std::cout<< " nouveau squelette "<<std::endl;
 
-            //il semble judicieux de ne vérifier qu'une courbure sur 2 pour l'instant
-
+            //il semble judicieux de ne vérifier qu'une courbure sur 2 pour l'instant, d'où la variable offset
             if(courbure_[0] > seuil && offset == 0)
             {
+                AB = articulations_[1].head<3>() -articulations_[0].head<3>();
+                AA = articulations_[0].head<3>() -articulation_externe_begin_.head<3>();
+                AA.normalize();
+                AA = AA*AB.norm();
+                BB = articulations_[1].head<3>() -articulations_[2].head<3>();
+                BB.normalize();
+                BB = BB*AB.norm();
+
+                joint[0] = articulations_[0][0] + AB[0]/2 + AA[0]/16 - BB[0]/16;
+                joint[1] = articulations_[0][1] + AB[1]/2 + AA[1]/16 - BB[1]/16;
+                joint[2] = articulations_[0][2] + AB[2]/2 + AA[2]/16 - BB[2]/16;
+
+                /*
                 joint[0] = (9*articulations_[0][0] - articulation_externe_begin_[0] + 9*articulations_[1][0] - articulations_[2][0])/16;
                 joint[1] = (9*articulations_[0][1] - articulation_externe_begin_[1] + 9*articulations_[1][1] - articulations_[2][1])/16;
                 joint[2] = (9*articulations_[0][2] - articulation_externe_begin_[2] + 9*articulations_[1][2] - articulations_[2][2])/16;
-                joint[3] = (articulations_[0][3] + articulations_[1][3])/2;
-                std::cout<< courbure_[0]<< std::endl;
+                joint[3] = (articulations_[0][3] + articulations_[1][3])/2;*/
+
+                std::cout<< " c =" << courbure_[0]<< " indice 0 " << std::endl;
                 points_inter.push_back(joint);
                 pos.push_back(0);
             }
@@ -203,11 +221,25 @@ void Branch::SubdiBranch(const double& seuil)
             {
                 if(courbure_[i] > seuil)
                 {
+                    AB = articulations_[i+1].head<3>() -articulations_[i].head<3>();
+                    AA = articulations_[i].head<3>() -articulations_[i-1].head<3>();
+                    AA.normalize();
+                    AA = AA*AB.norm();
+                    BB = articulations_[i+1].head<3>() -articulations_[i+2].head<3>();
+                    BB.normalize();
+                    BB = BB*AB.norm();
+
+                    joint[0] = articulations_[i][0] + AB[0]/2 + AA[0]/16 - BB[0]/16;
+                    joint[1] = articulations_[i][1] + AB[1]/2 + AA[1]/16 - BB[1]/16;
+                    joint[2] = articulations_[i][2] + AB[2]/2 + AA[2]/16 - BB[2]/16;
+
+                    /*
                     joint[0] = (9*articulations_[i][0] - articulations_[i-1][0] + 9*articulations_[i+1][0] - articulations_[i+2][0])/16;
                     joint[1] = (9*articulations_[i][1] - articulations_[i-1][1] + 9*articulations_[i+1][1] - articulations_[i+2][1])/16;
                     joint[2] = (9*articulations_[i][2] - articulations_[i-1][2] + 9*articulations_[i+1][2] - articulations_[i+2][2])/16;
+                    */
                     joint[3] = (articulations_[i][3] + articulations_[i+1][3])/2;
-                    std::cout<< " c =" << courbure_[i]<< std::endl;
+                    std::cout<< " c =" << courbure_[i] << "  indice "<< i << std::endl;
 
                     points_inter.push_back(joint);
                     pos.push_back(i);
@@ -218,12 +250,27 @@ void Branch::SubdiBranch(const double& seuil)
             {
                 if(courbure_[size_courbure - 2] > seuil)
                 {
+                    AB = articulations_[size_courbure - 1].head<3>() -articulations_[size_courbure - 2].head<3>();
+                    AA = articulations_[size_courbure - 2].head<3>() -articulations_[size_courbure - 3].head<3>();
+                    AA.normalize();
+                    AA = AA*AB.norm();
+                    BB = articulations_[size_courbure - 1].head<3>() -articulation_externe_end_.head<3>();
+                    BB.normalize();
+                    BB = BB*AB.norm();
+
+                    joint[0] = articulations_[size_courbure - 2][0] + AB[0]/2 + AA[0]/16 - BB[0]/16;
+                    joint[1] = articulations_[size_courbure - 2][1] + AB[1]/2 + AA[1]/16 - BB[1]/16;
+                    joint[2] = articulations_[size_courbure - 2][2] + AB[2]/2 + AA[2]/16 - BB[2]/16;
+
+                    /*
                     joint[0] = (9*articulations_[size_courbure - 2][0] - articulations_[size_courbure - 3][0] + 9*articulations_[size_courbure - 1][0] - articulation_externe_end_[0])/16;
                     joint[1] = (9*articulations_[size_courbure - 2][1] - articulations_[size_courbure - 3][1] + 9*articulations_[size_courbure - 1][1] - articulation_externe_end_[1])/16;
                     joint[2] = (9*articulations_[size_courbure - 2][2] - articulations_[size_courbure - 3][2] + 9*articulations_[size_courbure - 1][2] - articulation_externe_end_[2])/16;
+                    */
+
                     joint[3] = (articulations_[size_courbure - 2][3] + articulations_[size_courbure - 1][3])/2;
 
-                    std::cout<< courbure_[size_courbure -2]<< std::endl;
+                    std::cout<< " c =" << courbure_[size_courbure -2] << " dernier indice "<< std::endl;
                     points_inter.push_back(joint);
                     pos.push_back(size_courbure - 2);
                 }
@@ -269,6 +316,8 @@ void Branch::SubdiBranch(const double& seuil)
             }
 
             offset++;
+
+            sleep(1);
 
             ComputeMatrixFromBranch();
 

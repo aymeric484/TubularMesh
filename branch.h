@@ -26,7 +26,7 @@ public:
     // Branch(squelette S, std::vector<int> ind); devrait nous permettre l'extraction des branches d'un squelette grace aux indices des articulations concernees
 
     void CreateTrianglesCoordinates(const unsigned int&);
-    void ComputeMatrixFromBranch(); // Nous donnes les 3 axes T,N,B pour chaque articulation et la matrice de changement de repère
+
     void SubdiBranch(const double&); // Subdivise la branche selon le seuil de courbure en entrée
 
     std::vector<Vec4> articulations_;
@@ -43,10 +43,7 @@ public:
 
 private:
 
-    // ces 3 méthodes peuvent être implémenté en utilisant une définition différente de la dérivation
-    void ComputeT(); // determine les tangentes en chaque articulation et normalise
-    void ComputeN(); // determine les normales en chaque articulation et normalise
-    void ComputeB(); // idem pour Bitangentes  
+    void ComputeMatrixFromBranch(); // Nous donnes les 3 axes T,N,B pour chaque articulation et la matrice de changement de repère
 
     //calcul de la torsion. A faire apres l'inversion préventive du repere et avant l affectation des coordonées
     void CalculateTorsion();

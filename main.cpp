@@ -776,7 +776,6 @@ int main(int argc, char** argv)
 
     Branch branche;
     branche.SubdiBranch(0.30);
-    branche.ComputeMatrixFromBranch();
     branche.CreateTrianglesCoordinates(3);
 
     std::string volume_mesh;

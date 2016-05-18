@@ -5,6 +5,7 @@
 Branch::Branch()
 {
 
+    //fixed
     /*
     Vec4 V40(0.0, 1.0, 1.1, 2.0);
     Vec4 V41(0.5, 1.1, 2.0, 2.0);
@@ -36,6 +37,7 @@ Branch::Branch()
     //articulations_.push_back(V49);
     */
 
+    //random
     /*
     Vec4 V_externe_begin(0.0, 0.0, 0.0, 6.0);
     Vec4 Vprec = V_externe_begin;
@@ -84,6 +86,52 @@ Branch::Branch()
     articulation_externe_begin_ = V_externe_begin;
     //articulation_externe_end_ = V_externe_end;
     */
+
+
+    //true
+    /*
+
+    Vec4 V43(157.529, 165.104, 143.265, 10.6542);//
+    Vec4 V44(156.741, 165.766, 143.338, 10.6164);//
+    Vec4 V45(156.164, 166.293, 143.566, 10.5596);//
+    Vec4 V46(155.589, 166.821, 143.805, 10.5028);//
+    Vec4 V47(154.999, 167.335, 144.084, 10.4461);//
+    Vec4 V48(154.394, 167.836, 144.413, 10.3893);//
+    Vec4 V49(153.791, 168.344, 144.778, 10.3325);//
+    Vec4 V4a(153.204, 168.877, 145.158, 10.2947);//
+    Vec4 V4b(152.632, 169.431, 145.541, 10.219);//
+
+    Vec4 V4c(151.759, 169.569, 145.936, 10.5637);//
+    Vec4 V4d(150.929, 169.761, 146.285, 10.5154);//
+    Vec4 V4e(150.175, 170.046, 146.552, 10.4429);//
+    Vec4 V4f(149.506, 170.437, 146.726, 10.3703);//
+    Vec4 V4g(148.916, 170.927, 146.819, 10.2978);//
+    Vec4 V4h(148.341, 171.436, 146.907, 10.287);//
+    // 14 volumes reliant ces 15 faces
+
+    Vec4 V_externe_begin(158.567, 164.244, 143.404, 11.5886);
+    Vec4 V_externe_end(147.713, 171.881, 147.066, 10.343);
+
+    articulation_externe_end_ = V_externe_end;
+    articulation_externe_begin_ = V_externe_begin;
+
+    articulations_.push_back(V43);
+    articulations_.push_back(V44);
+    articulations_.push_back(V45);
+    articulations_.push_back(V46);
+    articulations_.push_back(V47);
+    articulations_.push_back(V48);
+    articulations_.push_back(V49);
+    articulations_.push_back(V4a);
+    articulations_.push_back(V4b);
+    articulations_.push_back(V4c);
+    articulations_.push_back(V4d);
+    articulations_.push_back(V4e);
+    articulations_.push_back(V4f);
+    articulations_.push_back(V4g);
+    articulations_.push_back(V4h);
+    */
+
 
     Vec4 V40(158.567, 164.244, 143.404, 11.5886);
     Vec4 V41(152.632, 169.431, 145.541, 10.219);

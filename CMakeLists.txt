@@ -32,6 +32,7 @@ set(CMAKE_AUTOMOC ON)
 
 set(HEADER_FILES
         branch.h
+        config.h
 
 )
 

@@ -1,8 +1,10 @@
 #include "branch.h"
 
 
+
 Branch::Branch()
 {
+
     /*
     Vec4 V40(0.0, 1.0, 1.1, 2.0);
     Vec4 V41(0.5, 1.1, 2.0, 2.0);
@@ -15,8 +17,11 @@ Branch::Branch()
     //Vec4 V48(2.0, 4.0, 10.0, 1.0);
     //Vec4 V49(2.0, 4.0, 12.0, 1.0);
 
-
+    Vec4 V_externe_begin(0.0, 0.0, 0.0, 6.0);
     Vec4 V_externe_end(2.0, 4.4, 10.0, 2.0);
+
+    articulation_externe_end_ = V_externe_end;
+    articulation_externe_begin_ = V_externe_begin;
 
 
     articulations_.push_back(V40);
@@ -79,6 +84,7 @@ Branch::Branch()
     articulation_externe_begin_ = V_externe_begin;
     //articulation_externe_end_ = V_externe_end;
 
+
     branch_size_= articulations_.size();
 
 }
@@ -88,7 +94,7 @@ void Branch::SubdiBranch(const double& seuil)
 {
 
     std::vector<Vec4> points_inter; // vecteur intermediaire de stockage de points à ajouter à la branche
-    std::vector<unsigned int> pos;  // incdice où chacun de ces points doit être ajouté
+    std::vector<unsigned int> pos;  // indice où chacun de ces points doit être ajouté
 
     unsigned int decalage;          // indice ou inserer
     unsigned int size_courbure;
@@ -221,9 +227,9 @@ void Branch::SubdiBranch(const double& seuil)
             // insertion dans ma branche, au bon indice, de tout les points interpolé
             for(unsigned int j = 0; j < size_indices ; j++ )
             {
-                modif = true; // on modifie la branche
+                modif = true; // true car on modifie la branche
                 decalage = pos[size_indices - 1 - j] + 1; // indice où placer le nouveau point
-                nouv_arti = points_inter[size_indices - 1 - j]; //nouveau point a inserer
+                nouv_arti = points_inter[size_indices - 1 - j]; // nouveau point à inserer
                 articulations_.insert(articulations_.begin() + decalage, nouv_arti);
                 std::cout<< " itération "<< j << "  X  "<< nouv_arti[0] << "  Y  "<< nouv_arti[1] << "  Z  "<< nouv_arti[2] << "  R  "<< nouv_arti[3] << std::endl;
 
@@ -236,8 +242,6 @@ void Branch::SubdiBranch(const double& seuil)
                 ComputeMatrixFromBranch();
 
         }
-
-
     }
 
     // Version avec les itérator (incomplète)
@@ -309,56 +313,79 @@ void Branch::SubdiBranch(const double& seuil)
 
 }
 
-
-void Branch::CalculateTorsion()
-{
-    //premier terme n'a pas de torsion
-    //(utiliser les tangentes 1/2)
-    Vec3 normalized_dB_prec;
-    Vec3 normalized_dB_suiv;
-    Vec3 normalized_dB_moy; // correspondrait en théorie à la normale
-
-
-    torsion_.clear();
-
-    torsion_.push_back(0.0);
-
-    for(int i = 1; i < branch_size_ - 1; i++)
-    {
-        normalized_dB_prec = B_axis_[i] - B_axis_[i-1];
-        normalized_dB_prec.normalize();
-        normalized_dB_suiv = B_axis_[i+1] - B_axis_[i];
-        normalized_dB_suiv.normalize();
-        normalized_dB_moy = (normalized_dB_prec + normalized_dB_suiv )/2;
-        torsion_.push_back(sqrt(normalized_dB_moy[0]*normalized_dB_moy[0] + normalized_dB_moy[1]*normalized_dB_moy[1] + normalized_dB_moy[2]*normalized_dB_moy[2] ));
-        std::cout << " iteration " << i << " et torsion " << torsion_[i] << std::endl;
-        //normalized_dB_moy = normalized_dB_moy/torsion_[i];
-        //std::cout << normalized_dB_moy[0]
-    }
-
-    torsion_.push_back(torsion_[branch_size_ - 2]);
-
-
-    //puis recuperer la norm de se vecteur
-    //pour verifier, afficher cette torsion
-    //et comparer se vecteur à N_axis
-
-
-
-}
-
 void Branch::CreateTrianglesCoordinates(const unsigned int& primitive_size)
 {
+
+    //
+    //
+    // Initialisation
+    //
+    //
+
+
+    Eigen::Matrix3d RI; // rotation inverse de XYZ à NBT
+
     Vec4 coord4_int;
+    Vec3 B_projection_prec;     // pour le calcul de la projection de la bitangente precedente
+    Vec3 dB_prec;               // variation de B entre i-1 et i
+
     double TermeN, TermeB, TermeT;
-    branch_size_ =  articulations_.size();
+    double sum = 0;
+    double torsion_prec;
+    double Theta_prec;
+
+    ComputeMatrixFromBranch();
 
     for(int i = 0; i < branch_size_; i++)
     {
+
+        //
+        //
+        // Calcul de l'angle de torsion en i
+        //
+        //
+
+        // Calcul de la matrice de rotation de xyz à NBT en chaque point (pour le calcul d'angle de torsion principalement)
+        RI << N_axis_[i][0], N_axis_[i][1], N_axis_[i][2],
+              B_axis_[i][0], B_axis_[i][1], B_axis_[i][2],
+              T_axis_[i][0], T_axis_[i][1], T_axis_[i][2] ;
+
+
+        // Calcul de l'angle de torsion en chaque points
+        if(i != 0)
+        {
+            //calcul de la projection sur ( O, N, B) de la bitangente précédente
+            B_projection_prec = RI*B_axis_[i-1];
+            B_projection_prec[2] = 0;
+            B_projection_prec.normalize();
+
+            // Bitangente courante - Bitangente précédente => {0,1,0} - {Bn,Bb,0} , avec Bn et Bb composantes de la projetion sur (O,N,B) de B[i-1],
+            dB_prec = - B_projection_prec;
+            dB_prec[1] = 1 + dB_prec[1];
+            torsion_prec = dB_prec.norm();
+
+            // Calcul d'angle
+            // Le terme de droite provient d'un produit mixte (B(i-1)proj ^ (0,1,0)) . (0,0,1) et nous donne un signe => un sens de rotation
+            Theta_prec = 2 * asin( torsion_prec/2 ) * dB_prec[0]/ fabs(dB_prec[0]);
+
+            theta_.push_back(Theta_prec);
+        }
+        else { theta_.push_back(0.0); } // premier terme de theta est forcement nul, car pas de B[i-1] pour lui
+
+
+
+        //
+        //
+        // Calcul des coordonnées des points de chaque face de notre maillage
+        //
+        //
+
+        sum = sum + theta_[i];
         for(int j = 0; j < primitive_size; j++)
         {
-            TermeN = std::cos(2*Pi/primitive_size*j)*articulations_[i][3];
-            TermeB = std::sin(2*Pi/primitive_size*j)*articulations_[i][3];
+            // on se place sur un cercle de centre {0,0,0} et de rayon "articulations_[i][3]", on fait une rotation d'angle "sum" pour compenser la torsion
+            TermeN = std::cos(2*Pi/primitive_size*j + sum)*articulations_[i][3];
+            TermeB = std::sin(2*Pi/primitive_size*j + sum)*articulations_[i][3];
             TermeT = 0;
             coord4_int = {TermeN, TermeB, TermeT, 1}; //coordonées dans le repère local
             coord4_int = NBT_to_xyz_[i]*coord4_int; // coordonées dans le repère d'origine
@@ -366,6 +393,7 @@ void Branch::CreateTrianglesCoordinates(const unsigned int& primitive_size)
             // std::cout << "global : X " <<  coord4_int[0]  << " Y "<< coord4_int[1] << " Z "<< coord4_int[2] << std::endl;
             pos_vertices_.push_back(coord4_int.head<3>());
         }
+
     }
 }
 
@@ -384,6 +412,7 @@ void Branch::ComputeMatrixFromBranch()
     N_axis_.clear();
     B_axis_.clear();
     courbure_.clear();
+    theta_.clear();
 
     Vec3 normalized_tan_prec;   // tangente du segment precedent
     Vec3 normalized_tan_suiv;   // tangente du segment suivant
@@ -391,7 +420,9 @@ void Branch::ComputeMatrixFromBranch()
     Vec3 normalized_nor;        // pour la normale
     Vec3 normalized_vec3;       // pour la bitangente
 
-    Eigen::Matrix4d M; // M(indice_ligne, indice_colonne) pour get/set les valeurs
+
+    // M(indice_ligne, indice_colonne) pour get/set les valeurs
+    Eigen::Matrix4d M;  // matrice de changement de repère (rotation + translation) NBT au coordonées XYZ
 
 
     //
@@ -402,17 +433,17 @@ void Branch::ComputeMatrixFromBranch()
 
     // normalisation de la tangente T(-1)
     normalized_tan_prec = articulations_[0].head<3>() - articulation_externe_begin_.head<3>();
-    normalized_tan_prec = normalized_tan_prec/sqrt(normalized_tan_prec[0] * normalized_tan_prec[0] + normalized_tan_prec[1] * normalized_tan_prec[1] + normalized_tan_prec[2] * normalized_tan_prec[2]);
+    normalized_tan_prec.normalize();
     // normalisation de la tangente T(0)
     normalized_tan_suiv = articulations_[1].head<3>() - articulations_[0].head<3>();
-    normalized_tan_suiv = normalized_tan_suiv/sqrt(normalized_tan_suiv[0] * normalized_tan_suiv[0] + normalized_tan_suiv[1] * normalized_tan_suiv[1] + normalized_tan_suiv[2] * normalized_tan_suiv[2]);
+    normalized_tan_suiv.normalize();
     // Calcul de la tangente moyenne TM(0)
     normalized_tan_moye = (normalized_tan_prec + normalized_tan_suiv )/2;
     normalized_tan_moye.normalize();
     T_axis_.push_back(normalized_tan_moye);
     // Calcul de la normale N(0) + normalisation et calcul de la courbure
     normalized_nor = normalized_tan_suiv - normalized_tan_prec;
-    courbure_.push_back(sqrt(normalized_nor[0]*normalized_nor[0] + normalized_nor[1]*normalized_nor[1] + normalized_nor[2]*normalized_nor[2]));
+    courbure_.push_back(normalized_nor.norm());
     normalized_nor = normalized_nor/courbure_[0];
     N_axis_.push_back(normalized_nor);
 
@@ -420,42 +451,42 @@ void Branch::ComputeMatrixFromBranch()
     {
         // normalisation de la tangente T(i-1)
         normalized_tan_prec = articulations_[i].head<3>() - articulations_[i-1].head<3>();
-        normalized_tan_prec = normalized_tan_prec/sqrt(normalized_tan_prec[0] * normalized_tan_prec[0] + normalized_tan_prec[1] * normalized_tan_prec[1] + normalized_tan_prec[2] * normalized_tan_prec[2]);
+        normalized_tan_prec.normalize();
         // normalisation de la tangente T(i)
         normalized_tan_suiv = articulations_[i+1].head<3>() - articulations_[i].head<3>();
-        normalized_tan_suiv = normalized_tan_suiv/sqrt(normalized_tan_suiv[0] * normalized_tan_suiv[0] + normalized_tan_suiv[1] * normalized_tan_suiv[1] + normalized_tan_suiv[2] * normalized_tan_suiv[2]);
+        normalized_tan_suiv.normalize();
         // Calcul de la tangente moyenne TM(i)
         normalized_tan_moye = (normalized_tan_prec + normalized_tan_suiv )/2;
         normalized_tan_moye.normalize();
         T_axis_.push_back(normalized_tan_moye);
         // Calcul de la normale + normalisation et calcul de la courbure
         normalized_nor = normalized_tan_suiv - normalized_tan_prec;
-        courbure_.push_back(sqrt(normalized_nor[0]*normalized_nor[0] + normalized_nor[1]*normalized_nor[1] + normalized_nor[2]*normalized_nor[2]));
+        courbure_.push_back(normalized_nor.norm());
         normalized_nor = normalized_nor/courbure_[i];
         N_axis_.push_back(normalized_nor);
     }
+
     // normalisation de la tangente T(size -2)
     normalized_tan_prec = articulations_[branch_size_-1].head<3>() - articulations_[branch_size_-2].head<3>();
-    normalized_tan_prec = normalized_tan_prec/sqrt(normalized_tan_prec[0] * normalized_tan_prec[0] + normalized_tan_prec[1] * normalized_tan_prec[1] + normalized_tan_prec[2] * normalized_tan_prec[2]);
+    normalized_tan_prec.normalize();
     // normalisation de la tangente T(size -1)
-    normalized_tan_suiv = normalized_tan_suiv/sqrt(normalized_tan_suiv[0] * normalized_tan_suiv[0] + normalized_tan_suiv[1] * normalized_tan_suiv[1] + normalized_tan_suiv[2] * normalized_tan_suiv[2]);
     normalized_tan_suiv = articulation_externe_end_.head<3>() - articulations_[branch_size_-1].head<3>();
+    normalized_tan_suiv.normalize();
     // Calcul de la tangente moyenne TM(size -1b)
     normalized_tan_moye = (normalized_tan_prec + normalized_tan_suiv )/2;
     normalized_tan_moye.normalize();
     T_axis_.push_back(normalized_tan_moye);
     // Calcul de la normale N(size-1) + normalisation et calcul de la courbure
     normalized_nor = normalized_tan_suiv - normalized_tan_prec;
-    courbure_.push_back(sqrt(normalized_nor[0]*normalized_nor[0] + normalized_nor[1]*normalized_nor[1] + normalized_nor[2]*normalized_nor[2]));
+    courbure_.push_back(normalized_nor.norm());
     normalized_nor = normalized_nor/courbure_[branch_size_ -1];
     N_axis_.push_back(normalized_nor);
 
     // Calcul de B(i) comme produit vectoriel de T(i) et N(i)
     for( int i = 0 ; i < T_axis_.size() ; i++ )
     {
-
         normalized_vec3 = T_axis_[i].cross(N_axis_[i]);
-        normalized_vec3 = normalized_vec3/sqrt(normalized_vec3[0]*normalized_vec3[0] + normalized_vec3[1]*normalized_vec3[1] + normalized_vec3[2]*normalized_vec3[2]);
+        normalized_vec3.normalize();
         B_axis_.push_back(normalized_vec3);
     }
 
@@ -479,19 +510,15 @@ void Branch::ComputeMatrixFromBranch()
             }
         }
 
-
+        // Remplissage de NBT_to_xyz (rotation + translation)
         M << N_axis_[i][0], B_axis_[i][0], T_axis_[i][0], articulations_[i][0],
              N_axis_[i][1], B_axis_[i][1], T_axis_[i][1], articulations_[i][1],
              N_axis_[i][2], B_axis_[i][2], T_axis_[i][2], articulations_[i][2],
                   0       ,      0       ,      0       ,      1               ;
 
         NBT_to_xyz_.push_back(M);
+
     }
-
-    // Se fait apres les computeT,N,B et l'inversion des axes N,B
-    //CalculateTorsion();
-    // Pour calculer la torsion, utiliser l egalité B' = -torsion_ *N Donc, avec B' = (B(i+1)-B(i-1))/2 => dérivée approximée
-
 
     // Affichage des valeurs
     /*
@@ -503,8 +530,7 @@ void Branch::ComputeMatrixFromBranch()
         std::cout << " normale " << N_axis_[i][0] << " ; " << N_axis_[i][1] << " ; " << N_axis_[i][2] << std::endl;
         std::cout << " Bitangente " << B_axis_[i][0] << " ; " << B_axis_[i][1] << " ; " << B_axis_[i][2] << std::endl;
         std::cout << " courbure " << courbure_[i] << std::endl;
-        //std::cout << " torsion " << torsion_[i] << std::endl;
+        std::cout << " theta " << theta_[i]*180/Pi << std::endl;
     }*/
-
 
 }

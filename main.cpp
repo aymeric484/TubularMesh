@@ -50,7 +50,6 @@
 #include <cgogn/geometry/algos/normal.h>
 #include <cgogn/geometry/algos/filtering.h>
 
-
 #include <branch.h>
 
 using Map3 = cgogn::CMap3<cgogn::DefaultMapTraits>;
@@ -775,8 +774,8 @@ int main(int argc, char** argv)
 {
 
     Branch branche;
-    branche.SubdiBranch(0.30);
-    branche.CreateTrianglesCoordinates(3);
+    branche.SubdiBranch( COURBURE_MAX );
+    branche.CreateTrianglesCoordinates( TYPE_PRIMITIVE );
 
     std::string volume_mesh;
 	if (argc < 2)
@@ -796,7 +795,7 @@ int main(int argc, char** argv)
 
     //viewer.import(volume_mesh);//methode a remplacer, on ne cherchera plus a creer à partir d'un fichier
     //viewer.MakeFromBranch(branche.articulations_);
-    viewer.MakeFromBranch(branche.articulations_, branche.pos_vertices_, 3);
+    viewer.MakeFromBranch(branche.articulations_, branche.pos_vertices_, TYPE_PRIMITIVE);
 
     viewer.show();
 

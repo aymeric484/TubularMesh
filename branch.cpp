@@ -36,7 +36,7 @@ Branch::Branch()
     //articulations_.push_back(V49);
     */
 
-
+    /*
     Vec4 V_externe_begin(0.0, 0.0, 0.0, 6.0);
     Vec4 Vprec = V_externe_begin;
     Vec4 Vcourant;
@@ -83,7 +83,46 @@ Branch::Branch()
     articulation_externe_end_[3]= 6;
     articulation_externe_begin_ = V_externe_begin;
     //articulation_externe_end_ = V_externe_end;
+    */
 
+    Vec4 V40(158.567, 164.244, 143.404, 11.5886);
+    Vec4 V41(152.632, 169.431, 145.541, 10.219);
+    Vec4 V42(132.136, 178.481, 150.965, 10.1528);
+    Vec4 V43(128.815, 180.92, 149.244, 10.1195);
+    Vec4 V44(106.709, 182.813, 165.666, 6.40015);
+    Vec4 V45(98.8012, 184.416, 172.686, 6.34969);
+    Vec4 V46(96.7544, 192.683, 181.163, 4.54742);
+    Vec4 V47(95.2864, 200.203, 186.224, 4.33793);
+    Vec4 V48(96.3256, 209.397, 195.3, 3.96686);
+    Vec4 V49(101.788, 216.014, 201.224, 3.20456);
+    Vec4 V4a(99.8711, 239.244, 202.948, 2.58874);
+    Vec4 V4b(102.484, 244.174, 205.795, 2.47286);
+    Vec4 V4c(109.035, 245.666, 209.102, 1.63297);
+    Vec4 V4d(121.965, 254.711, 212.793, 1.45202);
+    Vec4 V4e(120.023, 259.572, 216.045, 1.00817);
+    // 14 volumes reliant ces 15 faces
+
+    Vec4 V_externe_begin(175.259, 157.97, 138.061, 11.5886);
+    Vec4 V_externe_end(120.415, 258.765, 223.422, 0.7);
+
+    articulation_externe_end_ = V_externe_end;
+    articulation_externe_begin_ = V_externe_begin;
+
+    articulations_.push_back(V40);
+    articulations_.push_back(V41);
+    articulations_.push_back(V42);
+    articulations_.push_back(V43);
+    articulations_.push_back(V44);
+    articulations_.push_back(V45);
+    articulations_.push_back(V46);
+    articulations_.push_back(V47);
+    articulations_.push_back(V48);
+    articulations_.push_back(V49);
+    articulations_.push_back(V4a);
+    articulations_.push_back(V4b);
+    articulations_.push_back(V4c);
+    articulations_.push_back(V4d);
+    articulations_.push_back(V4e);
 
     branch_size_= articulations_.size();
 
@@ -313,7 +352,7 @@ void Branch::SubdiBranch(const double& seuil)
 
 }
 
-void Branch::CreateTrianglesCoordinates(const unsigned int& primitive_size)
+void Branch::CreateCircleCoordinates(const unsigned int& primitive_size)
 {
 
     //
@@ -384,8 +423,8 @@ void Branch::CreateTrianglesCoordinates(const unsigned int& primitive_size)
         for(int j = 0; j < primitive_size; j++)
         {
             // on se place sur un cercle de centre {0,0,0} et de rayon "articulations_[i][3]", on fait une rotation d'angle "sum" pour compenser la torsion
-            TermeN = std::cos(2*Pi/primitive_size*j + sum)*articulations_[i][3];
-            TermeB = std::sin(2*Pi/primitive_size*j + sum)*articulations_[i][3];
+            TermeN = std::cos(2*Pi/primitive_size*j + sum/**/)*articulations_[i][3];
+            TermeB = std::sin(2*Pi/primitive_size*j + sum/**/)*articulations_[i][3];
             TermeT = 0;
             coord4_int = {TermeN, TermeB, TermeT, 1}; //coordonées dans le repère local
             coord4_int = NBT_to_xyz_[i]*coord4_int; // coordonées dans le repère d'origine

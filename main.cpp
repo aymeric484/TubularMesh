@@ -182,7 +182,7 @@ void Viewer::MakeFromBranch(const std::vector<Vec4>& branche, const std::vector<
     //fusionner les deux boucles si possible
     for(int n = 1 ; n < nb_articulation ; n++)
     {
-        volume_control.push_back(mbuild.add_prism_topo(3u));//construit le prisme et renvoi un dart du prisme d'une des faces triangulaires, rendant un parcourt du prisme possible
+        volume_control.push_back(mbuild.add_prism_topo(TYPE_PRIMITIVE));//construit le prisme et renvoi un dart du prisme d'une des faces triangulaires, rendant un parcourt du prisme possible
     }
 
 
@@ -775,7 +775,7 @@ int main(int argc, char** argv)
 
     Branch branche;
     branche.SubdiBranch( COURBURE_MAX );
-    branche.CreateTrianglesCoordinates( TYPE_PRIMITIVE );
+    branche.CreateCircleCoordinates( TYPE_PRIMITIVE );
 
     std::string volume_mesh;
 	if (argc < 2)

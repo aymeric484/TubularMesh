@@ -5,5 +5,5 @@
 
 
 #define Pi  3.14159265359
-#define COURBURE_MAX 0.30
-#define TYPE_PRIMITIVE 3
+#define COURBURE_MAX 0.60
+#define TYPE_PRIMITIVE 32

@@ -82,7 +82,6 @@ public:
 
 	virtual void keyPressEvent(QKeyEvent *);
     void import(const std::string& volume_mesh);
-    void MakeFromBranch(const std::vector<Vec4>& branche);
     void MakeFromBranch(const std::vector<Vec4>& branche, const std::vector<Vec3>& positions, const unsigned int& primitives);
     //void OrientationFromSkel
 	virtual ~Viewer();
@@ -182,7 +181,7 @@ void Viewer::MakeFromBranch(const std::vector<Vec4>& branche, const std::vector<
     //fusionner les deux boucles si possible
     for(int n = 1 ; n < nb_articulation ; n++)
     {
-        volume_control.push_back(mbuild.add_prism_topo(TYPE_PRIMITIVE));//construit le prisme et renvoi un dart du prisme d'une des faces triangulaires, rendant un parcourt du prisme possible
+        volume_control.push_back(mbuild.add_prism_topo(primitives));//construit le prisme et renvoi un dart du prisme d'une des faces triangulaires, rendant un parcourt du prisme possible
     }
 
 
@@ -244,197 +243,6 @@ void Viewer::MakeFromBranch(const std::vector<Vec4>& branche, const std::vector<
     Vec3 center = bb_.center();
     setSceneCenter(qoglviewer::Vec(center[0], center[1], center[2]));
     showEntireScene();
-
-}
-
-void Viewer::MakeFromBranch(const std::vector<Vec4>& branche)
-{
-    /*
-    //Vertex S = map_.add_vertex(); //sera à tester
-    //Vertex v(d);
-    //v=map_.add_vertex();
-
-
-    //parcourt du prisme pour récupérer les sommets du prisme
-    const std::array<Dart, 6> vertices_of_prism = {
-      d,
-      map_.phi1(d),
-      map_.phi_1(d),
-      map_.phi2(map_.phi1(map_.phi1(map_.phi2(map_.phi_1(d))))),
-      map_.phi2(map_.phi1(map_.phi1(map_.phi2(d)))),
-      map_.phi2(map_.phi1(map_.phi1(map_.phi2(map_.phi1(d))))),
-    };
-
-
-    */
-    /*
-        mbuild.template create_embedding<Vertex::ORBIT>();
-        //Objectif supposé : associer a chaque Dart un Vertex
-        typename Map3::template VertexAttribute<std::vector<Dart>> darts_per_vertex = map_.template add_attribute<std::vector<Dart> , Vertex::ORBIT>("darts_per_vertex");
-        typename Map3::DartMarkerStore m(map_);
-
-        mbuild.template swap_chunk_array_container<Vertex::ORBIT>(this->vertex_attributes_);
-
-        unsigned int index = 0u;x
-
-        for (Dart dv : vertices_of_prism)
-        {
-            const unsigned int emb = this->volumes_vertex_indices_[index];
-            index++;
-            //mbuild.init_parent_vertex_embedding(dv,emb);
-
-
-            //ici, on atteint tout ce qui est atteignable à partir de dv, grâce a des changement d arete et de face
-            Dart dd = dv;
-            do
-            {
-                m.mark(dd);
-                darts_per_vertex[emb].push_back(dd);
-                dd = map_.phi1(map_.phi2(dd));
-            } while(dd != dv);
-        }
-    */
-
-    /***************************************/
-    //Méthode de test 2
-    /*
-    cgogn::CellCache<Map3> vertices_cache(map_);
-    cgogn::CellCache<Map3> edges_cache(map_);
-    cgogn::CellCache<Map3> faces_cache(map_);
-    cgogn::CellCache<Map3> volumes_cache(map_);
-
-    vertices_cache.build<Vertex>();
-    edges_cache.build<Edge>();
-    faces_cache.build<Face>();
-    volumes_cache.build<Volume>();
-
-    unsigned int nbw = 0u;
-    map_.foreach_cell([&nbw] (Volume)
-    {
-        ++nbw;
-    }, volumes_cache);
-
-    unsigned int nbf = 0u;
-    map_.foreach_cell([&] (Face f)
-    {
-        ++nbf;
-    }, faces_cache);
-
-    unsigned int nbv = 0;
-    map_.foreach_cell([&] (Vertex v)
-    {
-        ++nbv;
-        unsigned int nb_incident = 0;
-        map_.foreach_incident_face(v, [&] (Face)
-        {
-            ++nb_incident;
-        });
-    }, vertices_cache);
-
-    unsigned int nbe = 0;
-    map_.foreach_cell([&nbe] (Edge)
-    {
-        ++nbe;
-    }, edges_cache);
-
-    cgogn_log_info("map3_from_image") << "nb vertices -> " << nbv;
-    cgogn_log_info("map3_from_image") << "nb edges -> " << nbe;
-    cgogn_log_info("map3_from_image") << "nb faces -> " << nbf;
-    cgogn_log_info("map3_from_image") << "nb volumes -> " << nbw;*/
-
-    //iterator & const ref
-    /*
-    int C1;
-     std::vector<Vec4> cpy_Branch = Branch;
-    for(std::vector<Vec4>::iterator it = cpy_Branch.begin(); it != cpy_Branch.end(); ++it) {
-        C1++;
-        Dart d = mbuild.add_prism_topo(3u);
-    }
-    std::cout<< C1<< std::endl;
-    */
-
-
-    //Declaration/initialisation des variables
-    MapBuilder mbuild(map_);
-
-    int nb_articulation = branche.size();
-    std::vector<Dart> volume_control;
-    Volume v1, v2;
-    int volume_count=0;
-    unsigned int face_count = 0;
-    int count = 0;
-    double TermeX, TermeY, TermeZ ;
-
-
-    //fusionner les deux boucles si possible
-    for(int n = 1 ; n < nb_articulation ; n++)
-    {
-        volume_control.push_back(mbuild.add_prism_topo(3u));//construit le prisme et renvoi un dart du prisme d'une des faces triangulaires, rendant un parcourt du prisme possible
-    }
-
-    for(int m = 1 ; m < nb_articulation-1 ; m++)
-    {
-        v1.dart = map_.phi2(map_.phi1(map_.phi1(map_.phi2(volume_control[m-1]))));
-        v2.dart = volume_control[m];
-
-        mbuild.sew_volumes(v1, v2);
-
-    }
-
-    mbuild.close_map(); //reboucle les volumes en bord de map
-
-
-    map_.foreach_cell([&] (Volume v){ volume_count++; }); // affichage du nombre de volumes
-    std::cout << " Il y a " << volume_count << " Volume(s)" << std::endl;
-
-
-    //Les vertices vont être indexe automatiquement & creation d'un de leur attribut, position dans l espace 3D
-    vertex_position_ = map_.add_attribute<Vec3, Vertex::ORBIT>("position");
-    vertex_normal_ = map_.add_attribute<Vec3, Vertex::ORBIT>("normal");
-
-    //On attribut des positions aux sommets des faces du squelette
-    for(Dart d : volume_control)
-    {
-        count = 0;
-        Face F(d);
-
-        map_.foreach_incident_vertex(F, [&] (Vertex v)
-        {
-            TermeX = branche[0 + face_count](0) + branche[0 + face_count](3) + branche[0 + face_count](3)*(-1.5)*count*(2-count) + branche[0 + face_count](3)*(-0.75)*count*(count-1);
-            TermeY = branche[0 + face_count](1) + branche[0 + face_count](3)*0.87*count*(2-count) - branche[0 + face_count](3)*0.435*count*(count-1);
-            TermeZ = branche[0 + face_count](2);
-
-            vertex_position_[v] = { TermeX, TermeY, TermeZ };
-            //vertex_position_[v] = TriangleCoord[face_count*3 + count]
-
-            count++;
-        });
-
-        face_count++;
-    }
-
-    // Ici, on gere la derniere face
-    Dart last=volume_control[volume_control.size()-1];
-    Face F_end(map_.phi2(map_.phi1(map_.phi1(map_.phi2(map_.phi_1(last))))));
-    count =0;
-    map_.foreach_incident_vertex(F_end, [&] (Vertex v_end){
-
-            TermeX = branche[0 + face_count](0) + branche[0 + face_count](3) + branche[0 + face_count](3)*(-0.75)*count*(count-1) + branche[0 + face_count](3)*(-1.5)*count*(2-count);
-            TermeY = branche[0 + face_count](1) + branche[0 + face_count](3)*0.435*count*(count-1) - branche[0 + face_count](3)*0.87*count*(2-count);
-            TermeZ = branche[0 + face_count](2);
-
-            vertex_position_[v_end] = { TermeX, TermeY, TermeZ };
-
-            count++;
-    });
-
-    //bounding boxe et scene parameters
-    cgogn::geometry::compute_bounding_box(vertex_position_, bb_);
-    setSceneRadius(bb_.diag_size()/2.0);
-    Vec3 center = bb_.center();
-    setSceneCenter(qoglviewer::Vec(center[0], center[1], center[2]));
-    showEntireScene();
-
 
 }
 

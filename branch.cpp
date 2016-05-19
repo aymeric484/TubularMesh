@@ -5,7 +5,7 @@
 Branch::Branch()
 {
 
-    //fixed
+    // fixed
     /*
     Vec4 V40(0.0, 1.0, 1.1, 2.0);
     Vec4 V41(0.5, 1.1, 2.0, 2.0);
@@ -37,7 +37,7 @@ Branch::Branch()
     //articulations_.push_back(V49);
     */
 
-    //random
+    // random
     /*
     Vec4 V_externe_begin(0.0, 0.0, 0.0, 6.0);
     Vec4 Vprec = V_externe_begin;
@@ -50,7 +50,7 @@ Branch::Branch()
 
     srand(time(NULL));
     int i_end = rand() % 10 + 3;
-    for(int i = 0; i < 80; i++ )
+    for(int i = 0; i < 20; i++ )
     {
 
         rand1=(rand() % 20000 + 200);
@@ -87,10 +87,9 @@ Branch::Branch()
     //articulation_externe_end_ = V_externe_end;
     */
 
-
-    //true
-    /*
-
+    // true
+    /*    */
+    // 1-2
     Vec4 V43(157.529, 165.104, 143.265, 10.6542);//
     Vec4 V44(156.741, 165.766, 143.338, 10.6164);//
     Vec4 V45(156.164, 166.293, 143.566, 10.5596);//
@@ -101,16 +100,43 @@ Branch::Branch()
     Vec4 V4a(153.204, 168.877, 145.158, 10.2947);//
     Vec4 V4b(152.632, 169.431, 145.541, 10.219);//
 
+    // 2-5
     Vec4 V4c(151.759, 169.569, 145.936, 10.5637);//
     Vec4 V4d(150.929, 169.761, 146.285, 10.5154);//
     Vec4 V4e(150.175, 170.046, 146.552, 10.4429);//
     Vec4 V4f(149.506, 170.437, 146.726, 10.3703);//
     Vec4 V4g(148.916, 170.927, 146.819, 10.2978);//
     Vec4 V4h(148.341, 171.436, 146.907, 10.287);//
+    Vec4 V4i(147.713, 171.881, 147.066, 10.343);//
+    Vec4 V4j(146.97, 172.184, 147.35, 10.4711);//
+    Vec4 V4k(146.159, 172.4, 147.686, 10.5533);//
+    Vec4 V4l(145.267, 172.523, 148.021, 10.5843);//
+    Vec4 V4m(144.402, 172.675, 148.269, 10.5589);//
+    Vec4 V4n(143.577, 172.871, 148.436, 10.5335);//
+    Vec4 V4o(142.782, 173.102, 148.545, 10.5081);//
+    Vec4 V4p(142.008, 173.355, 148.622, 10.4828);//
+    Vec4 V4q(141.243, 173.619, 148.684, 10.4574);//
+    Vec4 V4r(140.482, 173.887, 148.746, 10.432);//
+    Vec4 V4s(139.726, 174.158, 148.82, 10.4066);//
+    Vec4 V4t(138.978, 174.428, 148.924, 10.3812);//
+    Vec4 V4u(138.219, 174.762, 149.042, 10.3558);//
+    Vec4 V4v(137.428, 175.23, 149.158, 10.3305);//
+    Vec4 V4w(136.668, 175.682, 149.362, 10.3051);//
+    Vec4 V4x(135.928, 176.118, 149.643, 10.2797);//
+    Vec4 V4y(135.195, 176.549, 149.965, 10.2543);//
+    Vec4 V4z(134.455, 176.989, 150.282, 10.2289);//
+    Vec4 V40(133.696, 177.457, 150.555, 10.2036);//
+    Vec4 V41(132.92, 177.958, 150.777, 10.1866);//
+
+    // 5-11
+    Vec4 V42(132.136, 178.481, 150.965, 10.1528);//
+
+
     // 14 volumes reliant ces 15 faces
 
     Vec4 V_externe_begin(158.567, 164.244, 143.404, 11.5886);
-    Vec4 V_externe_end(147.713, 171.881, 147.066, 10.343);
+    Vec4 V_externe_end(131.313, 179.069, 150.422, 10.4569);
+
 
     articulation_externe_end_ = V_externe_end;
     articulation_externe_begin_ = V_externe_begin;
@@ -130,9 +156,31 @@ Branch::Branch()
     articulations_.push_back(V4f);
     articulations_.push_back(V4g);
     articulations_.push_back(V4h);
-    */
+    articulations_.push_back(V4i);
+    articulations_.push_back(V4j);
+    articulations_.push_back(V4k);
+    articulations_.push_back(V4l);
+    articulations_.push_back(V4m);
+    articulations_.push_back(V4n);
+    articulations_.push_back(V4o);
+    articulations_.push_back(V4p);
+    articulations_.push_back(V4q);
+    articulations_.push_back(V4r);
+    articulations_.push_back(V4s);
+    articulations_.push_back(V4t);
+    articulations_.push_back(V4u);
+    articulations_.push_back(V4v);
+    articulations_.push_back(V4w);
+    articulations_.push_back(V4x);
+    articulations_.push_back(V4y);
+    articulations_.push_back(V4z);
+    articulations_.push_back(V40);
+    articulations_.push_back(V41);
+    articulations_.push_back(V42);
 
 
+    // global
+    /*
     Vec4 V40(158.567, 164.244, 143.404, 11.5886);
     Vec4 V41(152.632, 169.431, 145.541, 10.219);
     Vec4 V42(132.136, 178.481, 150.965, 10.1528);
@@ -171,6 +219,23 @@ Branch::Branch()
     articulations_.push_back(V4c);
     articulations_.push_back(V4d);
     articulations_.push_back(V4e);
+*/
+
+    // petit test d'orientation (cas particulier)
+    /*
+    Vec4 V41(0.0, 1.0, 0.0, 1.4);
+    Vec4 V42(0.0, 1.2, 1.0, 1.4);
+    Vec4 V43(0.0, 1.0, 2.0, 1.4);
+
+    Vec4 V_externe_begin(0.0, 0.0, 0.0, 4.0);
+    Vec4 V_externe_end(0.0, 0.0, 2.0, 4.0);
+
+    articulation_externe_end_ = V_externe_end;
+    articulation_externe_begin_ = V_externe_begin;
+
+    articulations_.push_back(V41);
+    articulations_.push_back(V42);
+    articulations_.push_back(V43);*/
 
     branch_size_= articulations_.size();
 
@@ -559,7 +624,7 @@ void Branch::ComputeMatrixFromBranch()
     // normalisation de la tangente T(size -1)
     normalized_tan_suiv = articulation_externe_end_.head<3>() - articulations_[branch_size_-1].head<3>();
     normalized_tan_suiv.normalize();
-    // Calcul de la tangente moyenne TM(size -1b)
+    // Calcul de la tangente moyenne TM(size -1)
     normalized_tan_moye = (normalized_tan_prec + normalized_tan_suiv )/2;
     normalized_tan_moye.normalize();
     T_axis_.push_back(normalized_tan_moye);
@@ -608,7 +673,7 @@ void Branch::ComputeMatrixFromBranch()
     }
 
     // Affichage des valeurs
-    /*
+
     for(int i = 0; i < branch_size_; i++)
     {
         std::cout << " iteration " << i << std::endl;
@@ -617,7 +682,6 @@ void Branch::ComputeMatrixFromBranch()
         std::cout << " normale " << N_axis_[i][0] << " ; " << N_axis_[i][1] << " ; " << N_axis_[i][2] << std::endl;
         std::cout << " Bitangente " << B_axis_[i][0] << " ; " << B_axis_[i][1] << " ; " << B_axis_[i][2] << std::endl;
         std::cout << " courbure " << courbure_[i] << std::endl;
-        std::cout << " theta " << theta_[i]*180/Pi << std::endl;
-    }*/
+    }
 
 }

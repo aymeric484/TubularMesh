@@ -1,7 +1,5 @@
 #include "branch.h"
 
-
-
 Branch::Branch()
 {
 
@@ -38,7 +36,7 @@ Branch::Branch()
     */
 
     // random
-    /*
+/*
     Vec4 V_externe_begin(0.0, 0.0, 0.0, 6.0);
     Vec4 Vprec = V_externe_begin;
     Vec4 Vcourant;
@@ -50,7 +48,7 @@ Branch::Branch()
 
     srand(time(NULL));
     int i_end = rand() % 10 + 3;
-    for(int i = 0; i < 20; i++ )
+    for(int i = 0; i < 8000; i++ )
     {
 
         rand1=(rand() % 20000 + 200);
@@ -65,7 +63,7 @@ Branch::Branch()
         Vrand[3] = 2;
         Vcourant = Vprec + Vrand;
         Vcourant[3] = 6;
-        std::cout << " Point numero " << i << "  X =" << Vcourant[0] << "  Y =" << Vcourant[1] << "  Z =" << Vcourant[2] << std::endl;
+        //std::cout << " Point numero " << i << "  X =" << Vcourant[0] << "  Y =" << Vcourant[1] << "  Z =" << Vcourant[2] << std::endl;
         articulations_.push_back(Vcourant);
         Vprec = Vcourant;
 
@@ -85,10 +83,10 @@ Branch::Branch()
     articulation_externe_end_[3]= 6;
     articulation_externe_begin_ = V_externe_begin;
     //articulation_externe_end_ = V_externe_end;
-    */
 
+*/
     // true
-    /*    */
+/*
     // 1-2
     Vec4 V43(157.529, 165.104, 143.265, 10.6542);//
     Vec4 V44(156.741, 165.766, 143.338, 10.6164);//
@@ -131,12 +129,8 @@ Branch::Branch()
     // 5-11
     Vec4 V42(132.136, 178.481, 150.965, 10.1528);//
 
-
-    // 14 volumes reliant ces 15 faces
-
     Vec4 V_externe_begin(158.567, 164.244, 143.404, 11.5886);
     Vec4 V_externe_end(131.313, 179.069, 150.422, 10.4569);
-
 
     articulation_externe_end_ = V_externe_end;
     articulation_externe_begin_ = V_externe_begin;
@@ -177,10 +171,9 @@ Branch::Branch()
     articulations_.push_back(V40);
     articulations_.push_back(V41);
     articulations_.push_back(V42);
-
-
+*/
     // global
-    /*
+
     Vec4 V40(158.567, 164.244, 143.404, 11.5886);
     Vec4 V41(152.632, 169.431, 145.541, 10.219);
     Vec4 V42(132.136, 178.481, 150.965, 10.1528);
@@ -219,7 +212,7 @@ Branch::Branch()
     articulations_.push_back(V4c);
     articulations_.push_back(V4d);
     articulations_.push_back(V4e);
-*/
+
 
     // petit test d'orientation (cas particulier)
     /*
@@ -238,6 +231,15 @@ Branch::Branch()
     articulations_.push_back(V43);*/
 
     branch_size_= articulations_.size();
+}
+
+void Branch::BranchFromFile()
+{
+
+}
+
+void Branch::BranchSimplify()
+{
 
 }
 
@@ -465,7 +467,7 @@ void Branch::SubdiBranch(const double& seuil)
 
 }
 
-void Branch::CreateCircleCoordinates(const unsigned int& primitive_size)
+void Branch::CreateCircleCoordinates(const int& primitive_size)
 {
 
     //
@@ -528,7 +530,7 @@ void Branch::CreateCircleCoordinates(const unsigned int& primitive_size)
 
         //
         //
-        // Calcul des coordonnées des points de chaque face de notre maillage
+        // Calcul des coordonnées des points de chaque face du maillage
         //
         //
 
@@ -536,8 +538,8 @@ void Branch::CreateCircleCoordinates(const unsigned int& primitive_size)
         for(int j = 0; j < primitive_size; j++)
         {
             // on se place sur un cercle de centre {0,0,0} et de rayon "articulations_[i][3]", on fait une rotation d'angle "sum" pour compenser la torsion
-            TermeN = std::cos(2*Pi/primitive_size*j + sum/**/)*articulations_[i][3];
-            TermeB = std::sin(2*Pi/primitive_size*j + sum/**/)*articulations_[i][3];
+            TermeN = std::cos(2*Pi/primitive_size*j + sum)*articulations_[i][3];
+            TermeB = std::sin(2*Pi/primitive_size*j + sum)*articulations_[i][3];
             TermeT = 0;
             coord4_int = {TermeN, TermeB, TermeT, 1}; //coordonées dans le repère local
             coord4_int = NBT_to_xyz_[i]*coord4_int; // coordonées dans le repère d'origine

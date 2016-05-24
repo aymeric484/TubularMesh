@@ -33,12 +33,14 @@ set(CMAKE_AUTOMOC ON)
 set(HEADER_FILES
         branch.h
         config.h
+        window.h
 
 )
 
 set(SOURCE_FILES
 	main.cpp
         branch.cpp
+        window.cpp
 )
 
 add_executable(${PROJECT_NAME} ${HEADER_FILES} ${SOURCE_FILES})

@@ -172,8 +172,8 @@ Branch::Branch()
     articulations_.push_back(V41);
     articulations_.push_back(V42);
 */
-    // global
 
+    // global
     Vec4 V40(158.567, 164.244, 143.404, 11.5886);
     Vec4 V41(152.632, 169.431, 145.541, 10.219);
     Vec4 V42(132.136, 178.481, 150.965, 10.1528);
@@ -213,7 +213,6 @@ Branch::Branch()
     articulations_.push_back(V4d);
     articulations_.push_back(V4e);
 
-
     // petit test d'orientation (cas particulier)
     /*
     Vec4 V41(0.0, 1.0, 0.0, 1.4);
@@ -230,16 +229,210 @@ Branch::Branch()
     articulations_.push_back(V42);
     articulations_.push_back(V43);*/
 
+    //branch_size_= articulations_.size();
+
+}
+
+Branch::Branch(const std::string& filename)
+{
+    articulations_.clear();
+
+    std::ifstream fp(filename.c_str(), std::ios::in); // 1er argu => getpath && 2eme argu => read()
+    std::string line;
+
+    Vec4 arti_inter;
+
+    unsigned int word_pos = 0;
+
+    line.reserve(512);
+
+    std::getline(fp, line); //extrait toute une ligne
+
+
+    bool check = !fp.eof();
+    int count = 0; // comptera le nombre de mots lu pour tout le fichier
+
+    // tant qu'on est pas à la fin du fichier
+    while (check == true)
+    {
+        fp >> line; // extrait uniquement jusqu'a un espace
+        arti_inter[word_pos] = std::stod(line); // transformation en double du mot lu
+        word_pos++; // position du mot courant sur la ligne
+
+        // Le prochain mot sera sur la ligne suivante
+        if(word_pos > 3)
+        {
+            if(count == 0)
+                articulation_externe_begin_ = arti_inter; // on gère le point externe => premier point qui n'a pas de face associé
+            else
+            {
+                articulations_.push_back(arti_inter);
+                word_pos = 0;
+                fp.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // decalage à la ligne suivante
+            }
+        }
+        else{fp.ignore(std::numeric_limits<std::streamsize>::max(), ' ');} // decalage au mot suivant
+
+        check = !fp.eof(); // verifie si l'on en a terminé avec le fichier
+        count++;
+    }
+
+    // On gère le point externe de la fin de la branche => derrnier point qui n'a pas de face associé puis on le retire de articulation
+    articulation_externe_end_ = articulations_.back();
+    articulations_.pop_back();
+
+    //mise à jour de la taille du tableau
     branch_size_= articulations_.size();
-}
-
-void Branch::BranchFromFile()
-{
 
 }
 
-void Branch::BranchSimplify()
+void Branch::BranchSimplify(const double& tolerance)
 {
+    std::vector<Vec4> copie_articulation;
+    std::vector<unsigned int> indices;
+
+    unsigned int count = 0;
+    unsigned int index_max;
+    unsigned int index_min;
+    unsigned int index_cou;
+    unsigned int decalage;
+
+
+    /*
+    for(int i = 0; i < branch_size_; i++)
+    {
+        not_found = true;
+        j=1;
+        Vsegm = point_end - point_begin;
+        Vsegm.normalize();
+
+
+
+        while( not_found)
+        {
+
+            if(i > 0)
+                point_test = articulations_[i+j].head<3>();
+
+            Vtest = point_test - point_begin;
+            Vtest.normalize(); // normalisation peut etre inutile
+            Vresu = Vsegm.cross(Vtest);
+
+            std::cout <<  "distance :  " << Vresu.norm() << std::endl;
+
+            if(Vresu.norm() > tolerance)
+            {
+                not_found = false;
+                copie_articulation.push_back(articulations_[i]);
+
+                if( (i+j) >= branch_size_  )
+                {
+                    i=i+j;
+                    break;
+                }
+
+                point_begin = articulations_[i].head<3>();
+
+            }
+            else
+            {
+                j++;
+            }
+        }
+
+    }*/
+
+
+    // avec iterator
+    index_min = 0;
+    index_max = branch_size_ - 1;
+
+    indices.push_back(index_min);
+    indices.push_back(index_max);
+
+    std::vector<unsigned int>::iterator itb = indices.begin();
+    std::vector<unsigned int>::iterator ite = indices.end();
+    std::vector<unsigned int>::iterator it = itb;
+
+    // determiner les indices de articulations_ que l'on souhaite garder
+    while( it < indices.end())
+    {
+
+
+        if(index_max - index_min > 1)
+        {
+
+            index_cou = FindGreatestDistance(tolerance, index_min, index_max); // renvoi l'indice du point le plus eloigné
+            std::cout << "here "<< index_cou << std::endl;
+            if( (index_cou - index_min) != 0)
+            {
+                std::cout << "here "<< count << std::endl;
+                decalage = it-indices.begin();
+                indices.insert(it+1, index_cou); // insertion de l'indice entre *it = index_min et *(it+1) = index_max.  MAIS DETRUIT it.
+                //redefinir it ici
+                it = indices.begin() + decalage ; // +  la ou on est
+                std::cout << "plop "<< *(it+1) << std::endl;
+                count++;
+                ite = indices.end(); // mise à jour de la taille du tableau afin de ne pas sortir de la boucle
+            }
+            else
+            {
+                 ++it; // car plus de point dont d est > tolerance => on va à l'indice suivant
+                std::cout << "here "<< *it << std::endl;
+            }
+        }
+        else
+        {
+            ++it;
+            std::cout << "here "<< *it << std::endl;
+        } // plus de point tout court => aller à l'indice suivant
+
+
+        index_min = *(it);
+        if((it+1) != indices.end())
+            index_max = *(it + 1); // faut en bout de recherche d'indice
+        else
+        {
+            std::cout << "done " << std::endl;
+            break;
+        }
+
+        std::cout<< "index_min : " << index_min << "   index_max : " << index_max << std::endl;
+
+    }
+
+    // creation du nouveau vector articulation_
+    for(it = indices.begin(); it < indices.end(); ++it)
+        copie_articulation.push_back(articulations_[*it]);
+
+    articulations_.clear();
+    articulations_ = copie_articulation;
+
+/*
+
+
+
+
+        copie_articulation.push_back( *(itb + FindGreatestDistance(tolerance, articulations_)) );
+
+        Vsegm = (*(ite-1)).head<3>() - (*itb).head<3>();
+        Vsegm.normalize();
+        Vtest = (*(it+j)).head<3>() - (*itb).head<3>();
+        Vresu = Vtest.cross(Vsegm);
+
+        if( Vresu.norm() > tolerance )
+        {
+
+           itb = it + j;
+        }*/
+
+
+
+
+            // alors, on est toujours dans articulations_ => faire le test
+
+
+
 
 }
 
@@ -675,7 +868,7 @@ void Branch::ComputeMatrixFromBranch()
     }
 
     // Affichage des valeurs
-
+    /*
     for(int i = 0; i < branch_size_; i++)
     {
         std::cout << " iteration " << i << std::endl;
@@ -684,6 +877,48 @@ void Branch::ComputeMatrixFromBranch()
         std::cout << " normale " << N_axis_[i][0] << " ; " << N_axis_[i][1] << " ; " << N_axis_[i][2] << std::endl;
         std::cout << " Bitangente " << B_axis_[i][0] << " ; " << B_axis_[i][1] << " ; " << B_axis_[i][2] << std::endl;
         std::cout << " courbure " << courbure_[i] << std::endl;
-    }
+    }*/
 
 }
+
+unsigned int Branch::FindGreatestDistance(const double& tolerance, const unsigned int& index_min, const unsigned int& index_max)
+{
+
+    unsigned int index = 0;
+    double dmax = 0;
+
+    std::vector<Vec4>::iterator itb = articulations_.begin() + index_min;
+    std::vector<Vec4>::iterator ite = articulations_.begin() + index_max; // à ne pas atteindre
+
+    Vec3 Vtest;
+    Vec3 Vresu;
+
+    Vec3 Vsegm = ((*(ite-1))-(*itb)).head<3>();
+    Vsegm.normalize();
+
+    for(std::vector<Vec4>::iterator it = itb + 1; it < ite; ++it)
+    {
+        Vtest = (*(it)-(*itb)).head<3>();
+        Vresu = Vtest.cross(Vsegm);
+
+        if(Vresu.norm() > dmax && Vresu.norm() > tolerance )
+        {
+            dmax = Vresu.norm();
+            index = it - itb;
+        }
+
+    }
+
+    return (index_min + index);
+
+
+}
+
+
+
+
+
+
+
+
+//

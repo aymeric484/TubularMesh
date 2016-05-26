@@ -22,9 +22,9 @@ public:
 
     Branch();   //constructor
     // Branch(squelette S, std::vector<int> ind); devrait nous permettre l'extraction des branches d'un squelette grace aux indices des articulations concernees
+    Branch(const std::string&);
 
-    void BranchFromFile();
-    void BranchSimplify();
+    void BranchSimplify(const double&);
     void CreateCircleCoordinates(const int&);
     void SubdiBranch(const double&); // Subdivise la branche selon le seuil de courbure en argument
 
@@ -39,6 +39,8 @@ public:
 private:
 
     void ComputeMatrixFromBranch(); // Nous donnes les 3 axes T,N,B pour chaque articulation et la matrice de changement de repère
+
+    unsigned int FindGreatestDistance(const double&, const unsigned int&, const unsigned int& );
 
     std::vector<Eigen::Matrix4d> NBT_to_xyz_;
 

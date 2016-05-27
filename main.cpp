@@ -406,7 +406,8 @@ int main(int argc, char** argv)
 	QApplication application(argc, argv);
 	qoglviewer::init_ogl_context();
 
-    Branch branche("../../TubularMesh/multibranch");
+    //Branch branche("../../TubularMesh/multibranch");
+    Branch branche("../../TubularMesh/multibranch_cave");
 
     branche.BranchSimplify(DISTANCE_MIN);
     //branche.SubdiBranch( COURBURE_MAX );

@@ -229,7 +229,7 @@ Branch::Branch()
     articulations_.push_back(V42);
     articulations_.push_back(V43);*/
 
-    //branch_size_= articulations_.size();
+    branch_size_= articulations_.size();
 
 }
 
@@ -288,155 +288,84 @@ Branch::Branch(const std::string& filename)
 
 void Branch::BranchSimplify(const double& tolerance)
 {
+
+    //
+    // Initialisation
+    //
+
     std::vector<Vec4> copie_articulation;
     std::vector<unsigned int> indices;
 
-    unsigned int count = 0;
     unsigned int index_max;
     unsigned int index_min;
     unsigned int index_cou;
     unsigned int decalage;
 
-
-    /*
-    for(int i = 0; i < branch_size_; i++)
-    {
-        not_found = true;
-        j=1;
-        Vsegm = point_end - point_begin;
-        Vsegm.normalize();
-
-
-
-        while( not_found)
-        {
-
-            if(i > 0)
-                point_test = articulations_[i+j].head<3>();
-
-            Vtest = point_test - point_begin;
-            Vtest.normalize(); // normalisation peut etre inutile
-            Vresu = Vsegm.cross(Vtest);
-
-            std::cout <<  "distance :  " << Vresu.norm() << std::endl;
-
-            if(Vresu.norm() > tolerance)
-            {
-                not_found = false;
-                copie_articulation.push_back(articulations_[i]);
-
-                if( (i+j) >= branch_size_  )
-                {
-                    i=i+j;
-                    break;
-                }
-
-                point_begin = articulations_[i].head<3>();
-
-            }
-            else
-            {
-                j++;
-            }
-        }
-
-    }*/
-
-
-    // avec iterator
     index_min = 0;
     index_max = branch_size_ - 1;
 
     indices.push_back(index_min);
     indices.push_back(index_max);
 
-    std::vector<unsigned int>::iterator itb = indices.begin();
-    std::vector<unsigned int>::iterator ite = indices.end();
-    std::vector<unsigned int>::iterator it = itb;
+    std::vector<unsigned int>::iterator it = indices.begin();
 
-    // determiner les indices de articulations_ que l'on souhaite garder
+
+    //
+    // determiner les indices de articulations_ représentant les points que l'on souhaite garder
+    //
+
     while( it < indices.end())
     {
 
 
+        // on distingue le cas où il n'y a pas de points entre les deux indices index_min/max
         if(index_max - index_min > 1)
         {
 
             index_cou = FindGreatestDistance(tolerance, index_min, index_max); // renvoi l'indice du point le plus eloigné
-            std::cout << "here "<< index_cou << std::endl;
+
+            // On distingue le cas où l'on ne trouve pas de points dont la distance est > à tolérance
             if( (index_cou - index_min) != 0)
             {
-                std::cout << "here "<< count << std::endl;
-                decalage = it-indices.begin();
-                indices.insert(it+1, index_cou); // insertion de l'indice entre *it = index_min et *(it+1) = index_max.  MAIS DETRUIT it.
-                //redefinir it ici
-                it = indices.begin() + decalage ; // +  la ou on est
-                std::cout << "plop "<< *(it+1) << std::endl;
-                count++;
-                ite = indices.end(); // mise à jour de la taille du tableau afin de ne pas sortir de la boucle
+                decalage = it-indices.begin(); // sauvegarde de l'indice courant dans la variable décalage
+                indices.insert(it+1, index_cou); // insertion de l'indice entre *it = index_min et *(it+1) = index_max.  MAIS DETRUIT notre itérator !
+                it = indices.begin() + decalage ; // utilisation de la sauvegarde pour récupérer l'itérator
+
             }
-            else
-            {
-                 ++it; // car plus de point dont d est > tolerance => on va à l'indice suivant
-                std::cout << "here "<< *it << std::endl;
-            }
+            else{ ++it; } // si pas de points dont la distance est > à la tolerance, alors on va à l'indice suivant
+
         }
-        else
-        {
-            ++it;
-            std::cout << "here "<< *it << std::endl;
-        } // plus de point tout court => aller à l'indice suivant
+        else{ ++it; } // pas de points entre index_min/max => plus de point => aller à l'indice suivant
 
 
+        // On redefinit en fin de bouble index_min et index_max
         index_min = *(it);
-        if((it+1) != indices.end())
-            index_max = *(it + 1); // faut en bout de recherche d'indice
-        else
-        {
-            std::cout << "done " << std::endl;
-            break;
-        }
+        if((it+1) != indices.end()) // vérifier que it + 1 existe avant de l'affecter à index_max
+            index_max = *(it + 1);
+        else{ break;} //si it+1 n'existe pas, c'est qu'on a finit de parcourir notre tableau d'indice
 
-        std::cout<< "index_min : " << index_min << "   index_max : " << index_max << std::endl;
 
     }
 
-    // creation du nouveau vector articulation_
+
+    //
+    // création du nouveau vector articulation_, à l'aide des indices des points à garder que l'on vient  d'obtenir (contenus dans indices)
+    //
+
     for(it = indices.begin(); it < indices.end(); ++it)
         copie_articulation.push_back(articulations_[*it]);
 
     articulations_.clear();
     articulations_ = copie_articulation;
 
-/*
-
-
-
-
-        copie_articulation.push_back( *(itb + FindGreatestDistance(tolerance, articulations_)) );
-
-        Vsegm = (*(ite-1)).head<3>() - (*itb).head<3>();
-        Vsegm.normalize();
-        Vtest = (*(it+j)).head<3>() - (*itb).head<3>();
-        Vresu = Vtest.cross(Vsegm);
-
-        if( Vresu.norm() > tolerance )
-        {
-
-           itb = it + j;
-        }*/
-
-
-
-
-            // alors, on est toujours dans articulations_ => faire le test
 
 
 
 
 }
 
-// surveiller l'appel à ComputeMatrixFromBranch
+
+
 void Branch::SubdiBranch(const double& seuil)
 {
 
@@ -884,6 +813,10 @@ void Branch::ComputeMatrixFromBranch()
 unsigned int Branch::FindGreatestDistance(const double& tolerance, const unsigned int& index_min, const unsigned int& index_max)
 {
 
+    //
+    // init
+    //
+
     unsigned int index = 0;
     double dmax = 0;
 
@@ -893,23 +826,31 @@ unsigned int Branch::FindGreatestDistance(const double& tolerance, const unsigne
     Vec3 Vtest;
     Vec3 Vresu;
 
-    Vec3 Vsegm = ((*(ite-1))-(*itb)).head<3>();
+    // création du segment par rapport auquel on mesurera les distances de chaque point
+    Vec3 Vsegm = ((*ite)-(*itb)).head<3>();
     Vsegm.normalize();
+
+
+    //
+    // test de distance pour tout les points entre index_min et index_max
+    //
 
     for(std::vector<Vec4>::iterator it = itb + 1; it < ite; ++it)
     {
-        Vtest = (*(it)-(*itb)).head<3>();
+        // formule de distance point-segment en deux étapes
+        Vtest = ((*it)-(*itb)).head<3>();
         Vresu = Vtest.cross(Vsegm);
 
+        // sauvegarde de la distance max et de son indice si on dépasse  à la distance min tolérée
         if(Vresu.norm() > dmax && Vresu.norm() > tolerance )
         {
             dmax = Vresu.norm();
-            index = it - itb;
+            index = it - itb; // index sur un morceau de std::vector uniquement => index local
         }
 
     }
 
-    return (index_min + index);
+    return (index_min + index); // on additionne index_min pour passer en index global
 
 
 }

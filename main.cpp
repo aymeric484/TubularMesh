@@ -58,7 +58,6 @@
 #include "branch.h"
 #include "window.h"
 
-int counting=0;
 
 using Map3 = cgogn::CMap3<cgogn::DefaultMapTraits>;
 using Vertex = typename Map3::Vertex;
@@ -92,7 +91,7 @@ public:
 
 	virtual void keyPressEvent(QKeyEvent *);
     void mousePressEvent(QMouseEvent*);
-    void MakeFromBranch(const std::vector<Vec4>& branche, const std::vector<Vec3>& positions, const unsigned int& primitives);
+    void MakeFromBranch(const std::vector<Vec3>& positions, const unsigned int& primitives);
     //void OrientationFromSkel
 	virtual ~Viewer();
 	virtual void closeEvent(QCloseEvent *e);
@@ -141,11 +140,11 @@ private:
 //
 
 
-void Viewer::MakeFromBranch(const std::vector<Vec4>& branche, const std::vector<Vec3>& positions, const unsigned int& primitives)
+void Viewer::MakeFromBranch(const std::vector<Vec3>& positions, const unsigned int& primitives)
 {
     MapBuilder mbuild(map_);
 
-    int nb_articulation = branche.size();
+    int nb_articulation = positions.size()/primitives;
     std::vector<Dart> volume_control;
     Volume v1, v2;
     int volume_count=0;
@@ -406,12 +405,13 @@ int main(int argc, char** argv)
 	QApplication application(argc, argv);
 	qoglviewer::init_ogl_context();
 
-    //Branch branche("../../TubularMesh/multibranch");
-    Branch branche("../../TubularMesh/multibranch_cave");
+    Branch branche("../../TubularMesh/multibranch");
+    //Branch branche("../../TubularMesh/multibranch_cave");
 
     branche.BranchSimplify(DISTANCE_MIN);
     //branche.SubdiBranch( COURBURE_MAX );
     branche.CreateCircleCoordinates(TYPE_PRIMITIVE);
+    branche.SubdiDirectionT(COURBURE_MAX, TYPE_PRIMITIVE);
 
     /*
     Window fenetre;
@@ -422,7 +422,7 @@ int main(int argc, char** argv)
     Viewer viewer;
 	viewer.setWindowTitle("simpleViewer");
 
-    viewer.MakeFromBranch(branche.articulations_, branche.pos_vertices_, TYPE_PRIMITIVE );
+    viewer.MakeFromBranch(branche.pos_vertices_, TYPE_PRIMITIVE );
     viewer.move(105,68);
     viewer.show();
 

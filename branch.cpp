@@ -174,6 +174,7 @@ Branch::Branch()
 */
 
     // global
+    /*
     Vec4 V40(158.567, 164.244, 143.404, 11.5886);
     Vec4 V41(152.632, 169.431, 145.541, 10.219);
     Vec4 V42(132.136, 178.481, 150.965, 10.1528);
@@ -212,6 +213,7 @@ Branch::Branch()
     articulations_.push_back(V4c);
     articulations_.push_back(V4d);
     articulations_.push_back(V4e);
+    */
 
     // petit test d'orientation (cas particulier)
     /*
@@ -229,7 +231,7 @@ Branch::Branch()
     articulations_.push_back(V42);
     articulations_.push_back(V43);*/
 
-    branch_size_= articulations_.size();
+    //branch_size_= articulations_.size();
 
 }
 
@@ -265,16 +267,16 @@ Branch::Branch(const std::string& filename)
             if(count == 0)
                 articulation_externe_begin_ = arti_inter; // on gère le point externe => premier point qui n'a pas de face associé
             else
-            {
                 articulations_.push_back(arti_inter);
-                word_pos = 0;
-                fp.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // decalage à la ligne suivante
-            }
+
+            count++;
+            word_pos = 0;
+            fp.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // decalage à la ligne suivante
         }
         else{fp.ignore(std::numeric_limits<std::streamsize>::max(), ' ');} // decalage au mot suivant
 
         check = !fp.eof(); // verifie si l'on en a terminé avec le fichier
-        count++;
+
     }
 
     // On gère le point externe de la fin de la branche => derrnier point qui n'a pas de face associé puis on le retire de articulation
@@ -358,13 +360,7 @@ void Branch::BranchSimplify(const double& tolerance)
     articulations_.clear();
     articulations_ = copie_articulation;
 
-
-
-
-
 }
-
-
 
 void Branch::SubdiBranch(const double& seuil)
 {
@@ -589,7 +585,268 @@ void Branch::SubdiBranch(const double& seuil)
 
 }
 
-void Branch::CreateCircleCoordinates(const int& primitive_size)
+void Branch::SubdiDirectionT(const double& seuil, const unsigned int& primitive)
+{
+
+    //
+    //
+    // Initialisation
+    //
+    //
+
+    std::vector<Vec3> points_inter; // vecteur intermediaire de stockage de points à ajouter
+    std::vector<unsigned int> pos;  // indice des faces que l'on va ajouter
+
+    unsigned int decalage;          // indice où inserer la face courante => se calcul avec l'aide de pos
+    unsigned int size_courbure;
+    unsigned int size_indices;
+    unsigned int offset;
+    unsigned int count;
+
+
+    Vec3 nouv_point; // coord du point à ajouter par subdiv
+
+    Vec3 AB; // segments centraux
+    Vec3 AA; // tangentes precedant A
+    Vec3 BB; // opposés des tangentes suivant B
+
+    bool modif = true; // pour rentrer dans la boucle
+
+    ComputeCourbureMax(primitive); // nous donnes les courbures max en chaque face (transversales) du tube
+
+
+
+    //
+    //
+    //  Tant qu'il y a des modifications dans la boucle, on reparcourt les courbures, pour voir s'il faut créer de nouveaux points
+    //
+    //
+
+    while(modif == true)
+    {
+
+        modif = false; // si pas de modification, on quittera la boucle
+        offset = 0; // il semble judicieux de ne vérifier qu'une courbure sur 2, d'où la variable offset
+
+        // On parcourt toute les courbures d'indice paire (offset = 0) ou impaire (offset = 1)
+        while(offset < 2)
+        {
+
+            // réinitialisation des vectors intermédiaires et calcul de la nouvelle taille de courbure_[]
+            pos.clear();
+            points_inter.clear();
+            size_courbure = courbure_max_.size();
+
+
+            //
+            // Cas i = 0
+            //
+
+            if(courbure_max_[0] > seuil && offset == 0)
+            {
+                // On parcourt tout les points autour de l'articulation et on créer AA, AB, BB en chaque point
+                for(int j = 0; j < primitive; j++)
+                {
+                    // Segment [AB] que l'on veut détruire par subdivision
+                    AB = pos_vertices_[primitive + j] - pos_vertices_[j];
+
+                    // Calcul de la tangente arrivant sur A, que l'on normalise car rapport à la norme de [AB] pour quelle soit du meme ordre de grandeur
+                    AA = articulations_[0].head<3>() - articulation_externe_begin_.head<3>(); // le mieux est de prendre la tangente de type squelette car on a pas la vraie tangente en ce point
+                    AA.normalize();
+                    AA = AA*AB.norm();
+
+                    // Calcul de la tangente arrivant sur B, que l'on normalise car rapport à la norme de [AB] pour quelle soit du meme ordre de grandeur
+                    BB = pos_vertices_[primitive + j] -pos_vertices_[2*primitive + j];
+                    BB.normalize();
+                    BB = BB*AB.norm();
+
+                    // interpolation spline cubique pour les coordonées XYZ
+                    nouv_point[0] = pos_vertices_[j][0] + AB[0]/2 + AA[0]/16 + BB[0]/16;
+                    nouv_point[1] = pos_vertices_[j][1] + AB[1]/2 + AA[1]/16 + BB[1]/16;
+                    nouv_point[2] = pos_vertices_[j][2] + AB[2]/2 + AA[2]/16 + BB[2]/16;
+
+                    points_inter.push_back(nouv_point); // on rempli un vector intermédiaire, avec nos points interpolés
+
+                }
+                pos.push_back(0); // car si il y a eu modification dans la boucle précédente, alors c'est forcément à l'indice des faces 0
+            }
+
+
+
+            //
+            //  test de courbure en i, de 2 en 2, en calculant ensuite un point interpolant si besoin
+            //
+
+            for(unsigned int i= 2 - offset; i < size_courbure - 2; i=i+2)
+            {
+                if(courbure_max_[i] > seuil)
+                {
+                    // On parcourt tout les points autour de l'articulation et on créer AA, AB, BB en chaque point
+                    for(int j = 0; j < primitive; j++)
+                    {
+                        // Segment [AB] que l'on veut détruire par subdivision
+                        AB = pos_vertices_[(i+1)*primitive + j] - pos_vertices_[i*primitive + j];
+
+                        // Calcul de la tangente arrivant sur A, que l'on normalise car rapport à la norme de [AB] pour quelle soit du meme ordre de grandeur
+                        AA = pos_vertices_[i*primitive + j] - pos_vertices_[(i-1)*primitive + j];
+                        AA.normalize();
+                        AA = AA*AB.norm();
+
+                        // Calcul de la tangente arrivant sur B, que l'on normalise car rapport à la norme de [AB] pour quelle soit du meme ordre de grandeur
+                        BB = pos_vertices_[(i+1)*primitive + j] - pos_vertices_[(i+2)*primitive + j];
+                        BB.normalize();
+                        BB = BB*AB.norm();
+
+                        // interpolation spline cubique pour les coordonées XYZ
+                        nouv_point[0] = pos_vertices_[i*primitive + j][0] + AB[0]/2 + AA[0]/16 + BB[0]/16;
+                        nouv_point[1] = pos_vertices_[i*primitive + j][1] + AB[1]/2 + AA[1]/16 + BB[1]/16;
+                        nouv_point[2] = pos_vertices_[i*primitive + j][2] + AB[2]/2 + AA[2]/16 + BB[2]/16;
+
+                        points_inter.push_back(nouv_point); // on rempli un vector intermédiaire, avec nos points interpolés
+                    }
+
+                    pos.push_back(i); // si il y a eu modif, alors on stocke l'indice où il y a eu cette modif
+                }
+            }
+
+
+            //
+            // test de courbure en i = imax
+            //
+
+            if(((size_courbure) %2 && offset == 0) || ((size_courbure + 1) %2 && offset == 1) )
+            {
+                if(courbure_max_[size_courbure - 2] > seuil)
+                {
+                    // On parcourt tout les points autour de l'articulation et on créer AA, AB, BB en chaque point
+                    for(int j = 0; j < primitive; j++)
+                    {
+                        // Segment [AB] que l'on veut détruire par subdivision
+                        AB = pos_vertices_[(size_courbure - 1)*primitive + j] - pos_vertices_[(size_courbure - 2)*primitive + j];
+
+                        // Calcul de la tangente arrivant sur A, que l'on normalise car rapport à la norme de [AB] pour quelle soit du meme ordre de grandeur
+                        AA = pos_vertices_[(size_courbure - 2)*primitive + j] - pos_vertices_[(size_courbure - 3)*primitive + j];
+                        AA.normalize();
+                        AA = AA*AB.norm();
+
+                        // Calcul de la tangente arrivant sur B, que l'on normalise car rapport à la norme de [AB] pour quelle soit du meme ordre de grandeur
+                        BB = articulations_[size_courbure - 1].head<3>() -articulation_externe_end_.head<3>(); // à défaut d'une vraie tangente, on prend celle là
+                        BB.normalize();
+                        BB = BB*AB.norm();
+
+                        // interpolation spline cubique pour les coordonées XYZ
+                        nouv_point[0] = pos_vertices_[(size_courbure - 2)*primitive + j][0] + AB[0]/2 + AA[0]/16 - BB[0]/16;
+                        nouv_point[1] = pos_vertices_[(size_courbure - 2)*primitive + j][1] + AB[1]/2 + AA[1]/16 - BB[1]/16;
+                        nouv_point[2] = pos_vertices_[(size_courbure - 2)*primitive + j][2] + AB[2]/2 + AA[2]/16 - BB[2]/16;
+
+                        points_inter.push_back(nouv_point); // on rempli un vector intermédiaire, avec nos points interpolés
+                    }
+                    pos.push_back(size_courbure - 2); // si il y a eu modif, alors on stocke l'indice où il y a eu cette modif
+                }
+            }
+
+            size_indices = pos.size(); // la position a changé et doit être recalculée pour la suite
+
+
+            //
+            // phase de remplissage de pos_vertices_
+            //
+
+            // insertion dans ma branche, au bon indice, de tout les points interpolé
+            for(unsigned int k = 0; k < size_indices ; k++ )
+            {
+                modif = true; // true car on modifie la branche
+                count = 0; // cette variable compense le décalage causé par l'insertion des points au sein d'une même face
+
+                decalage = pos[size_indices - 1 - k]; // indice où placer le nouveau point
+
+                for(int j = 0; j< primitive ; j++)
+                {
+                    nouv_point = points_inter[(size_indices-k)*primitive - j-1];
+                    pos_vertices_.insert(pos_vertices_.begin() + (decalage+1)*primitive - j + count, nouv_point );
+                    count++;
+
+                }
+            }
+
+            offset++; // passage à 1 => indice impaire vont être testés ou à 2 => sortie de boucle car tout a été testé
+
+            // mise à jour des axis + courbure si on a ajouté un point
+            if(modif)
+                ComputeCourbureMax(primitive);
+
+        }
+    }
+}
+
+void Branch::ComputeCourbureMax(const unsigned int& primitive)
+{
+    Vec3 vec_prec;
+    Vec3 vec_suiv;
+    Vec3 vec_diff;
+
+    courbure_max_.clear();
+    unsigned int size_arti = articulations_.size();
+
+
+    // cas k=0  => première face
+    courbure_max_.push_back(0.0); // allocation d'espace mémoire dans courbure_max pour y mettre une nouvelle valeure
+
+    // on parcourt les points de la face
+    for(int i = 0; i < primitive; i++)
+    {
+        vec_prec = articulations_[0].head<3>() - articulation_externe_begin_.head<3>();
+        vec_suiv = pos_vertices_[ primitive + i ] - pos_vertices_[ i ];
+        vec_prec.normalize();
+        vec_suiv.normalize();
+        vec_diff = vec_suiv - vec_prec; // calcul de normale
+
+        if(vec_diff.norm() > courbure_max_[0])
+            courbure_max_[0] = vec_diff.norm(); // si la courbure en ce point est supérieure, alors elle devient la courbure max
+
+    }
+
+
+    // cas différents du début et de la fin (cas normaux) de k=1 à k=dernière face - 1
+    for(int k = 1; k < size_arti - 1; k++)
+    {
+        courbure_max_.push_back(0.0);
+
+        // on parcourt les points de la face
+        for(int i = 0; i < primitive; i++)
+        {
+            vec_prec = pos_vertices_[ k*primitive + i ] - pos_vertices_[ (k-1)*primitive + i ];
+            vec_suiv = pos_vertices_[ (k+1)*primitive + i ] - pos_vertices_[ k*primitive + i ];
+            vec_prec.normalize();
+            vec_suiv.normalize();
+            vec_diff = vec_suiv - vec_prec; // calcul de normale
+
+            if(vec_diff.norm() > courbure_max_[k])
+                courbure_max_[k] = vec_diff.norm(); // si la courbure en ce point est supérieure, alors elle devient la courbure max
+
+        }
+    }
+
+
+    // cas k=dernière face
+    courbure_max_.push_back(0.0);
+
+    // on parcourt les points de la face
+    for(int i = 0; i < primitive; i++)
+    {
+        vec_prec = pos_vertices_[ (size_arti - 1) * primitive + i ] - pos_vertices_[(size_arti - 2) * primitive + i ];
+        vec_suiv = articulation_externe_end_.head<3>() - articulations_[ size_arti - 1 ].head<3>();
+        vec_prec.normalize();
+        vec_suiv.normalize();
+        vec_diff = vec_suiv - vec_prec; // calcul de normale
+
+        if(vec_diff.norm() > courbure_max_[size_arti - 1])
+            courbure_max_[ size_arti - 1] = vec_diff.norm(); // si la courbure en ce point est supérieure, alors elle devient la courbure max
+
+    }
+}
+
+void Branch::CreateCircleCoordinates(const unsigned int& primitive_size)
 {
 
     //
@@ -672,7 +929,6 @@ void Branch::CreateCircleCoordinates(const int& primitive_size)
 
     }
 }
-
 
 void Branch::ComputeMatrixFromBranch()
 {
@@ -854,12 +1110,6 @@ unsigned int Branch::FindGreatestDistance(const double& tolerance, const unsigne
 
 
 }
-
-
-
-
-
-
 
 
 //

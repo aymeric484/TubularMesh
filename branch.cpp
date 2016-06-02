@@ -250,7 +250,6 @@ Branch::Branch(const std::string& filename)
 
     std::getline(fp, line); //extrait toute une ligne
 
-
     bool check = !fp.eof();
     int count = 0; // comptera le nombre de mots lu pour tout le fichier
 
@@ -359,6 +358,7 @@ void Branch::BranchSimplify(const double& tolerance)
 
     articulations_.clear();
     articulations_ = copie_articulation;
+    branch_size_ = articulations_.size();
 
 }
 
@@ -595,14 +595,14 @@ void Branch::SubdiDirectionT(const double& seuil, const unsigned int& primitive)
     //
 
     std::vector<Vec3> points_inter; // vecteur intermediaire de stockage de points à ajouter
-    std::vector<unsigned int> pos;  // indice des faces que l'on va ajouter
+    std::vector<Vec4> arti_inter;
+    std::vector<unsigned int> pos; // indice des faces que l'on va ajouter
 
     unsigned int decalage;          // indice où inserer la face courante => se calcul avec l'aide de pos
     unsigned int size_courbure;
     unsigned int size_indices;
     unsigned int offset;
     unsigned int count;
-
 
     Vec3 nouv_point; // coord du point à ajouter par subdiv
 
@@ -614,11 +614,13 @@ void Branch::SubdiDirectionT(const double& seuil, const unsigned int& primitive)
 
     ComputeCourbureMax(primitive); // nous donnes les courbures max en chaque face (transversales) du tube
 
-
+    /*
+    for(unsigned int l = 0; l < branch_size_; l++)
+        pos_vertices_.insert( pos_vertices_.begin() + (branch_size_ - 1 - l)*primitive  ,articulations_[branch_size_ - 1 - l].head<3>());*/
 
     //
     //
-    //  Tant qu'il y a des modifications dans la boucle, on reparcourt les courbures, pour voir s'il faut créer de nouveaux points
+    // Tant qu'il y a des modifications dans la boucle, on reparcourt les courbures, pour voir s'il faut créer de nouveaux points
     //
     //
 
@@ -644,6 +646,14 @@ void Branch::SubdiDirectionT(const double& seuil, const unsigned int& primitive)
 
             if(courbure_max_[0] > seuil && offset == 0)
             {
+
+                //
+                // ici faire AB = articulations_[] ect...
+                // puis point inter.pushback(new_arti)
+                //
+
+                //AB = pos_vertices_[]
+
                 // On parcourt tout les points autour de l'articulation et on créer AA, AB, BB en chaque point
                 for(int j = 0; j < primitive; j++)
                 {
@@ -681,6 +691,11 @@ void Branch::SubdiDirectionT(const double& seuil, const unsigned int& primitive)
             {
                 if(courbure_max_[i] > seuil)
                 {
+                    //
+                    // ici faire AB = articulations_[] ect...
+                    // puis point inter.pushback(new_arti)
+                    //
+
                     // On parcourt tout les points autour de l'articulation et on créer AA, AB, BB en chaque point
                     for(int j = 0; j < primitive; j++)
                     {
@@ -718,6 +733,13 @@ void Branch::SubdiDirectionT(const double& seuil, const unsigned int& primitive)
             {
                 if(courbure_max_[size_courbure - 2] > seuil)
                 {
+
+                    //
+                    // ici faire AB = articulations_[] ect...
+                    // puis point inter.pushback(new_arti)
+                    //
+
+
                     // On parcourt tout les points autour de l'articulation et on créer AA, AB, BB en chaque point
                     for(int j = 0; j < primitive; j++)
                     {
@@ -760,13 +782,19 @@ void Branch::SubdiDirectionT(const double& seuil, const unsigned int& primitive)
 
                 decalage = pos[size_indices - 1 - k]; // indice où placer le nouveau point
 
+                pos_vertices_.insert(pos_vertices_.begin() + (decalage+1)*primitive, points_inter.begin() + (size_indices - 1 - k)*primitive, points_inter.begin() + (size_indices - k)*primitive );
+
+                /*
                 for(int j = 0; j< primitive ; j++)
                 {
+
                     nouv_point = points_inter[(size_indices-k)*primitive - j-1];
                     pos_vertices_.insert(pos_vertices_.begin() + (decalage+1)*primitive - j + count, nouv_point );
                     count++;
 
-                }
+
+                }*/
+
             }
 
             offset++; // passage à 1 => indice impaire vont être testés ou à 2 => sortie de boucle car tout a été testé
@@ -790,7 +818,7 @@ void Branch::ComputeCourbureMax(const unsigned int& primitive)
 
 
     // cas k=0  => première face
-    courbure_max_.push_back(0.0); // allocation d'espace mémoire dans courbure_max pour y mettre une nouvelle valeure
+    courbure_max_.push_back(0.0); // allocation d'espace mémoire dans courbure_max pour y mettre une nouvelle valeur
 
     // on parcourt les points de la face
     for(int i = 0; i < primitive; i++)

@@ -146,7 +146,6 @@ void Viewer::MakeFromBranch(const std::vector<Vec3>& positions, const unsigned i
 
     int nb_articulation = positions.size()/primitives;
     std::vector<Dart> volume_control;
-    Volume v1, v2;
     int volume_count=0;
     unsigned int face_count = 0;
     int count = 0;
@@ -161,10 +160,10 @@ void Viewer::MakeFromBranch(const std::vector<Vec3>& positions, const unsigned i
 
     for(int m = 1 ; m < nb_articulation-1 ; m++)
     {
-        v1.dart = map_.phi2(map_.phi1(map_.phi1(map_.phi2(volume_control[m-1]))));
-        v2.dart = volume_control[m];
+        Dart v1 = map_.phi2(map_.phi1(map_.phi1(map_.phi2(volume_control[m-1]))));
+        Dart v2 = volume_control[m];
 
-        mbuild.sew_volumes(v1, v2);
+        mbuild.sew_volumes(Volume(v1), Volume(v2));
     }
 
     mbuild.close_map(); //reboucle les volumes en bord de map
@@ -177,7 +176,6 @@ void Viewer::MakeFromBranch(const std::vector<Vec3>& positions, const unsigned i
     //Les vertices vont être indexe automatiquement & creation d'un de leur attribut, position dans l espace 3D
     vertex_position_ = map_.add_attribute<Vec3, Vertex::ORBIT>("position");
     vertex_normal_ = map_.add_attribute<Vec3, Vertex::ORBIT>("normal");
-
 
 
     //On attribut des positions aux sommets des faces du squelette
@@ -263,21 +261,8 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
         }
         case Qt::Key_Plus:
         {
-
-        /*
-            affinage_++;
-
-            Branch branche;
-            branche.SubdiBranch( COURBURE_MAX );
-            branche.CreateCircleCoordinates( TYPE_PRIMITIVE + affinage_);
-
-            Viewer viewer2;
-            viewer2.MakeFromBranch(branche.articulations_, branche.pos_vertices_, TYPE_PRIMITIVE + affinage_ );
-            this->map_.swap_attributes(this->vertex_position_, viewer2.vertex_position_);*/
-
             std::cout<<"plus"<<std::endl;
             break;
-
         }
 		case Qt::Key_E:
 			edge_rendering_ = !edge_rendering_;
@@ -290,6 +275,15 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
             break;
         case Qt::Key_B:
             bb_rendering_ = !bb_rendering_;
+            break;
+        case Qt::Key_C:
+            // modif map_
+            // modif vertex_position_
+            cgogn::rendering::update_vbo(vertex_position_, vbo_pos_);
+            volume_drawer_->update_face<Vec3>(map_, vertex_position_);
+            volume_drawer_->update_edge<Vec3>(map_, vertex_position_);
+            topo_drawer_->update<Vec3>(map_, vertex_position_);
+            render_->init_primitives<Vec3>(map_, cgogn::rendering::POINTS);
             break;
 		default:
 			break;

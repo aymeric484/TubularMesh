@@ -38,9 +38,7 @@ public:
 private:
 
     void ComputeMatrixFromBranch(); // Nous donnes les 3 axes T,N,B pour chaque articulation et la matrice de changement de repère
-
     void ComputeCourbureMax(const unsigned int&);
-
     unsigned int FindGreatestDistance(const double&, const unsigned int&, const unsigned int& );
 
     std::vector<Eigen::Matrix4d> NBT_to_xyz_;

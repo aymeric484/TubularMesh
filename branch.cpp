@@ -360,6 +360,9 @@ void Branch::BranchSimplify(const double& tolerance)
     articulations_ = copie_articulation;
     branch_size_ = articulations_.size();
 
+    std::cout<< "articulations : " << branch_size_ << std::endl;
+
+
 }
 
 void Branch::SubdiBranch(const double& seuil)
@@ -595,7 +598,6 @@ void Branch::SubdiDirectionT(const double& seuil, const unsigned int& primitive)
     //
 
     std::vector<Vec3> points_inter; // vecteur intermediaire de stockage de points à ajouter
-    std::vector<Vec4> arti_inter;
     std::vector<unsigned int> pos; // indice des faces que l'on va ajouter
 
     unsigned int decalage;          // indice où inserer la face courante => se calcul avec l'aide de pos
@@ -614,9 +616,7 @@ void Branch::SubdiDirectionT(const double& seuil, const unsigned int& primitive)
 
     ComputeCourbureMax(primitive); // nous donnes les courbures max en chaque face (transversales) du tube
 
-    /*
-    for(unsigned int l = 0; l < branch_size_; l++)
-        pos_vertices_.insert( pos_vertices_.begin() + (branch_size_ - 1 - l)*primitive  ,articulations_[branch_size_ - 1 - l].head<3>());*/
+
 
     //
     //
@@ -648,32 +648,52 @@ void Branch::SubdiDirectionT(const double& seuil, const unsigned int& primitive)
             {
 
                 //
-                // ici faire AB = articulations_[] ect...
-                // puis point inter.pushback(new_arti)
+                // Creation de la nouvelle articulation
+
+                // Segment [AB] que l'on veut détruire par subdivision
+                AB = pos_vertices_[1*(primitive + 1)] - pos_vertices_[0];
+
+                // Calcul de la tangente arrivant sur A, que l'on normalise car rapport à la norme de [AB] pour quelle soit du meme ordre de grandeur
+                AA = pos_vertices_[0] - articulation_externe_begin_.head<3>(); // le mieux est de prendre la tangente de type squelette car on a pas la vraie tangente en ce point
+                AA.normalize();
+                AA = AA*AB.norm();
+
+                // Calcul de la tangente arrivant sur B, que l'on normalise car rapport à la norme de [AB] pour quelle soit du meme ordre de grandeur
+                BB = pos_vertices_[1*(primitive + 1)] - pos_vertices_[2*(primitive + 1)];
+                BB.normalize();
+                BB = BB*AB.norm();
+
+                // interpolation spline cubique pour les coordonées XYZ
+                nouv_point[0] = pos_vertices_[0][0] + AB[0]/2 + AA[0]/16 + BB[0]/16;
+                nouv_point[1] = pos_vertices_[0][1] + AB[1]/2 + AA[1]/16 + BB[1]/16;
+                nouv_point[2] = pos_vertices_[0][2] + AB[2]/2 + AA[2]/16 + BB[2]/16;
+
+                points_inter.push_back(nouv_point);
+
+
                 //
+                // Creation des nouveaux points autour de la nouvelle articulation
 
-                //AB = pos_vertices_[]
-
-                // On parcourt tout les points autour de l'articulation et on créer AA, AB, BB en chaque point
+                // On créer AA, AB, BB en chaque point
                 for(int j = 0; j < primitive; j++)
                 {
                     // Segment [AB] que l'on veut détruire par subdivision
-                    AB = pos_vertices_[primitive + j] - pos_vertices_[j];
+                    AB = pos_vertices_[(primitive + 1) + j + 1] - pos_vertices_[j + 1];
 
                     // Calcul de la tangente arrivant sur A, que l'on normalise car rapport à la norme de [AB] pour quelle soit du meme ordre de grandeur
-                    AA = articulations_[0].head<3>() - articulation_externe_begin_.head<3>(); // le mieux est de prendre la tangente de type squelette car on a pas la vraie tangente en ce point
+                    AA = pos_vertices_[0] - articulation_externe_begin_.head<3>(); // le mieux est de prendre la tangente de type squelette car on a pas la vraie tangente en ce point
                     AA.normalize();
                     AA = AA*AB.norm();
 
                     // Calcul de la tangente arrivant sur B, que l'on normalise car rapport à la norme de [AB] pour quelle soit du meme ordre de grandeur
-                    BB = pos_vertices_[primitive + j] -pos_vertices_[2*primitive + j];
+                    BB = pos_vertices_[(primitive+1) + j + 1] -pos_vertices_[2*(primitive+1) + j + 1];
                     BB.normalize();
                     BB = BB*AB.norm();
 
                     // interpolation spline cubique pour les coordonées XYZ
-                    nouv_point[0] = pos_vertices_[j][0] + AB[0]/2 + AA[0]/16 + BB[0]/16;
-                    nouv_point[1] = pos_vertices_[j][1] + AB[1]/2 + AA[1]/16 + BB[1]/16;
-                    nouv_point[2] = pos_vertices_[j][2] + AB[2]/2 + AA[2]/16 + BB[2]/16;
+                    nouv_point[0] = pos_vertices_[j + 1][0] + AB[0]/2 + AA[0]/16 + BB[0]/16;
+                    nouv_point[1] = pos_vertices_[j + 1][1] + AB[1]/2 + AA[1]/16 + BB[1]/16;
+                    nouv_point[2] = pos_vertices_[j + 1][2] + AB[2]/2 + AA[2]/16 + BB[2]/16;
 
                     points_inter.push_back(nouv_point); // on rempli un vector intermédiaire, avec nos points interpolés
 
@@ -691,31 +711,54 @@ void Branch::SubdiDirectionT(const double& seuil, const unsigned int& primitive)
             {
                 if(courbure_max_[i] > seuil)
                 {
-                    //
-                    // ici faire AB = articulations_[] ect...
-                    // puis point inter.pushback(new_arti)
-                    //
 
-                    // On parcourt tout les points autour de l'articulation et on créer AA, AB, BB en chaque point
+                    //
+                    // Creation de la nouvelle articulation
+
+                    // Segment [AB] que l'on veut détruire par subdivision
+                    AB = pos_vertices_[(i+1)*(primitive + 1)] - pos_vertices_[i*(primitive + 1)];
+
+                    // Calcul de la tangente arrivant sur A, que l'on normalise car rapport à la norme de [AB] pour quelle soit du meme ordre de grandeur
+                    AA = pos_vertices_[i*(primitive + 1)] - pos_vertices_[(i-1)*(primitive + 1)]; // le mieux est de prendre la tangente de type squelette car on a pas la vraie tangente en ce point
+                    AA.normalize();
+                    AA = AA*AB.norm();
+
+                    // Calcul de la tangente arrivant sur B, que l'on normalise car rapport à la norme de [AB] pour quelle soit du meme ordre de grandeur
+                    BB = pos_vertices_[(i+1)*(primitive + 1)] - pos_vertices_[(i+2)*(primitive + 1)];
+                    BB.normalize();
+                    BB = BB*AB.norm();
+
+                    // interpolation spline cubique pour les coordonées XYZ
+                    nouv_point[0] = pos_vertices_[i*(primitive + 1)][0] + AB[0]/2 + AA[0]/16 + BB[0]/16;
+                    nouv_point[1] = pos_vertices_[i*(primitive + 1)][1] + AB[1]/2 + AA[1]/16 + BB[1]/16;
+                    nouv_point[2] = pos_vertices_[i*(primitive + 1)][2] + AB[2]/2 + AA[2]/16 + BB[2]/16;
+
+                    points_inter.push_back(nouv_point);
+
+
+                    //
+                    // Creation des nouveaux points autour de la nouvelle articulation articulation
+
+                    // On créer AA, AB, BB en chaque point
                     for(int j = 0; j < primitive; j++)
                     {
                         // Segment [AB] que l'on veut détruire par subdivision
-                        AB = pos_vertices_[(i+1)*primitive + j] - pos_vertices_[i*primitive + j];
+                        AB = pos_vertices_[(i + 1)*(primitive + 1) + j + 1] - pos_vertices_[i*(primitive+1) + j + 1];
 
                         // Calcul de la tangente arrivant sur A, que l'on normalise car rapport à la norme de [AB] pour quelle soit du meme ordre de grandeur
-                        AA = pos_vertices_[i*primitive + j] - pos_vertices_[(i-1)*primitive + j];
+                        AA = pos_vertices_[i*(primitive + 1) + j + 1] - pos_vertices_[(i-1)*(primitive + 1) + j + 1];
                         AA.normalize();
                         AA = AA*AB.norm();
 
                         // Calcul de la tangente arrivant sur B, que l'on normalise car rapport à la norme de [AB] pour quelle soit du meme ordre de grandeur
-                        BB = pos_vertices_[(i+1)*primitive + j] - pos_vertices_[(i+2)*primitive + j];
+                        BB = pos_vertices_[(i + 1)*(primitive + 1) + j + 1] - pos_vertices_[(i + 2)*(primitive + 1) + j + 1];
                         BB.normalize();
                         BB = BB*AB.norm();
 
                         // interpolation spline cubique pour les coordonées XYZ
-                        nouv_point[0] = pos_vertices_[i*primitive + j][0] + AB[0]/2 + AA[0]/16 + BB[0]/16;
-                        nouv_point[1] = pos_vertices_[i*primitive + j][1] + AB[1]/2 + AA[1]/16 + BB[1]/16;
-                        nouv_point[2] = pos_vertices_[i*primitive + j][2] + AB[2]/2 + AA[2]/16 + BB[2]/16;
+                        nouv_point[0] = pos_vertices_[i*(primitive + 1) + j + 1][0] + AB[0]/2 + AA[0]/16 + BB[0]/16;
+                        nouv_point[1] = pos_vertices_[i*(primitive + 1) + j + 1][1] + AB[1]/2 + AA[1]/16 + BB[1]/16;
+                        nouv_point[2] = pos_vertices_[i*(primitive + 1) + j + 1][2] + AB[2]/2 + AA[2]/16 + BB[2]/16;
 
                         points_inter.push_back(nouv_point); // on rempli un vector intermédiaire, avec nos points interpolés
                     }
@@ -735,36 +778,59 @@ void Branch::SubdiDirectionT(const double& seuil, const unsigned int& primitive)
                 {
 
                     //
-                    // ici faire AB = articulations_[] ect...
-                    // puis point inter.pushback(new_arti)
+                    // Creation de la nouvelle articulation
+
+                    // Segment [AB] que l'on veut détruire par subdivision
+                    AB = pos_vertices_[(size_courbure - 1)*(primitive + 1)] - pos_vertices_[(size_courbure - 2)*(primitive + 1)];
+
+                    // Calcul de la tangente arrivant sur A, que l'on normalise car rapport à la norme de [AB] pour quelle soit du meme ordre de grandeur
+                    AA = pos_vertices_[(size_courbure - 2)*(primitive + 1)]- pos_vertices_[(size_courbure - 3)*(primitive + 1)]; // le mieux est de prendre la tangente de type squelette car on a pas la vraie tangente en ce point
+                    AA.normalize();
+                    AA = AA*AB.norm();
+
+                    // Calcul de la tangente arrivant sur B, que l'on normalise car rapport à la norme de [AB] pour quelle soit du meme ordre de grandeur
+                    BB = pos_vertices_[(size_courbure - 1)*(primitive + 1)] - articulation_externe_end_.head<3>();
+                    BB.normalize();
+                    BB = BB*AB.norm();
+
+                    // interpolation spline cubique pour les coordonées XYZ
+                    nouv_point[0] = pos_vertices_[(size_courbure - 2)*(primitive + 1)][0] + AB[0]/2 + AA[0]/16 + BB[0]/16;
+                    nouv_point[1] = pos_vertices_[(size_courbure - 2)*(primitive + 1)][1] + AB[1]/2 + AA[1]/16 + BB[1]/16;
+                    nouv_point[2] = pos_vertices_[(size_courbure - 2)*(primitive + 1)][2] + AB[2]/2 + AA[2]/16 + BB[2]/16;
+
+                    points_inter.push_back(nouv_point);
+
+
                     //
+                    // Creation des nouveaux points autour de la nouvelle articulation articulation
 
-
-                    // On parcourt tout les points autour de l'articulation et on créer AA, AB, BB en chaque point
+                    // On créer AA, AB, BB en chaque point
                     for(int j = 0; j < primitive; j++)
                     {
                         // Segment [AB] que l'on veut détruire par subdivision
-                        AB = pos_vertices_[(size_courbure - 1)*primitive + j] - pos_vertices_[(size_courbure - 2)*primitive + j];
+                        AB = pos_vertices_[(size_courbure - 1)*(primitive + 1) + 1 + j] - pos_vertices_[(size_courbure - 2)*(primitive + 1) + 1 + j];
 
                         // Calcul de la tangente arrivant sur A, que l'on normalise car rapport à la norme de [AB] pour quelle soit du meme ordre de grandeur
-                        AA = pos_vertices_[(size_courbure - 2)*primitive + j] - pos_vertices_[(size_courbure - 3)*primitive + j];
+                        AA = pos_vertices_[(size_courbure - 2)*(primitive + 1) + j + 1] - pos_vertices_[(size_courbure - 3)*(primitive + 1) + j + 1];
                         AA.normalize();
                         AA = AA*AB.norm();
 
                         // Calcul de la tangente arrivant sur B, que l'on normalise car rapport à la norme de [AB] pour quelle soit du meme ordre de grandeur
-                        BB = articulations_[size_courbure - 1].head<3>() -articulation_externe_end_.head<3>(); // à défaut d'une vraie tangente, on prend celle là
+                        BB = pos_vertices_[(size_courbure - 1)*(primitive + 1)] - articulation_externe_end_.head<3>(); // à défaut d'une vraie tangente, on prend celle là
                         BB.normalize();
                         BB = BB*AB.norm();
 
                         // interpolation spline cubique pour les coordonées XYZ
-                        nouv_point[0] = pos_vertices_[(size_courbure - 2)*primitive + j][0] + AB[0]/2 + AA[0]/16 - BB[0]/16;
-                        nouv_point[1] = pos_vertices_[(size_courbure - 2)*primitive + j][1] + AB[1]/2 + AA[1]/16 - BB[1]/16;
-                        nouv_point[2] = pos_vertices_[(size_courbure - 2)*primitive + j][2] + AB[2]/2 + AA[2]/16 - BB[2]/16;
+                        nouv_point[0] = pos_vertices_[(size_courbure - 2)*(primitive + 1) + j + 1][0] + AB[0]/2 + AA[0]/16 - BB[0]/16;
+                        nouv_point[1] = pos_vertices_[(size_courbure - 2)*(primitive + 1) + j + 1][1] + AB[1]/2 + AA[1]/16 - BB[1]/16;
+                        nouv_point[2] = pos_vertices_[(size_courbure - 2)*(primitive + 1) + j + 1][2] + AB[2]/2 + AA[2]/16 - BB[2]/16;
 
                         points_inter.push_back(nouv_point); // on rempli un vector intermédiaire, avec nos points interpolés
                     }
+
                     pos.push_back(size_courbure - 2); // si il y a eu modif, alors on stocke l'indice où il y a eu cette modif
                 }
+
             }
 
             size_indices = pos.size(); // la position a changé et doit être recalculée pour la suite
@@ -782,7 +848,9 @@ void Branch::SubdiDirectionT(const double& seuil, const unsigned int& primitive)
 
                 decalage = pos[size_indices - 1 - k]; // indice où placer le nouveau point
 
-                pos_vertices_.insert(pos_vertices_.begin() + (decalage+1)*primitive, points_inter.begin() + (size_indices - 1 - k)*primitive, points_inter.begin() + (size_indices - k)*primitive );
+                pos_vertices_.insert(pos_vertices_.begin() + (decalage + 1)*(primitive + 1) , points_inter.begin() + (size_indices - 1 - k)*(primitive + 1), points_inter.begin() + (size_indices - k)*(primitive + 1) );
+
+                //pos_vertices_.insert(pos_vertices_.begin() + (decalage+1)*primitive, points_inter.begin() + (size_indices - 1 - k)*primitive, points_inter.begin() + (size_indices - k)*primitive );
 
                 /*
                 for(int j = 0; j< primitive ; j++)
@@ -803,8 +871,10 @@ void Branch::SubdiDirectionT(const double& seuil, const unsigned int& primitive)
             if(modif)
                 ComputeCourbureMax(primitive);
 
+
         }
     }
+
 }
 
 void Branch::ComputeCourbureMax(const unsigned int& primitive)
@@ -814,7 +884,7 @@ void Branch::ComputeCourbureMax(const unsigned int& primitive)
     Vec3 vec_diff;
 
     courbure_max_.clear();
-    unsigned int size_arti = articulations_.size();
+    unsigned int size_arti = pos_vertices_.size()/(primitive + 1);
 
 
     // cas k=0  => première face
@@ -824,7 +894,7 @@ void Branch::ComputeCourbureMax(const unsigned int& primitive)
     for(int i = 0; i < primitive; i++)
     {
         vec_prec = articulations_[0].head<3>() - articulation_externe_begin_.head<3>();
-        vec_suiv = pos_vertices_[ primitive + i ] - pos_vertices_[ i ];
+        vec_suiv = pos_vertices_[ primitive + 1 + i + 1 ] - pos_vertices_[ i + 1 ];
         vec_prec.normalize();
         vec_suiv.normalize();
         vec_diff = vec_suiv - vec_prec; // calcul de normale
@@ -843,8 +913,8 @@ void Branch::ComputeCourbureMax(const unsigned int& primitive)
         // on parcourt les points de la face
         for(int i = 0; i < primitive; i++)
         {
-            vec_prec = pos_vertices_[ k*primitive + i ] - pos_vertices_[ (k-1)*primitive + i ];
-            vec_suiv = pos_vertices_[ (k+1)*primitive + i ] - pos_vertices_[ k*primitive + i ];
+            vec_prec = pos_vertices_[ k*(primitive + 1) + i + 1 ] - pos_vertices_[ (k-1)*(primitive + 1) + i + 1 ];
+            vec_suiv = pos_vertices_[ (k+1)*(primitive + 1) + i + 1 ] - pos_vertices_[ k*(primitive + 1) + i + 1 ];
             vec_prec.normalize();
             vec_suiv.normalize();
             vec_diff = vec_suiv - vec_prec; // calcul de normale
@@ -862,7 +932,7 @@ void Branch::ComputeCourbureMax(const unsigned int& primitive)
     // on parcourt les points de la face
     for(int i = 0; i < primitive; i++)
     {
-        vec_prec = pos_vertices_[ (size_arti - 1) * primitive + i ] - pos_vertices_[(size_arti - 2) * primitive + i ];
+        vec_prec = pos_vertices_[ (size_arti - 1) * (primitive + 1) + i + 1 ] - pos_vertices_[(size_arti - 2) * (primitive + 1) + i + 1 ];
         vec_suiv = articulation_externe_end_.head<3>() - articulations_[ size_arti - 1 ].head<3>();
         vec_prec.normalize();
         vec_suiv.normalize();
@@ -942,6 +1012,9 @@ void Branch::CreateCircleCoordinates(const unsigned int& primitive_size)
         //
 
         sum = sum + theta_[i];
+
+        pos_vertices_.push_back(articulations_[i].head<3>());
+
         for(int j = 0; j < primitive_size; j++)
         {
             // on se place sur un cercle de centre {0,0,0} et de rayon "articulations_[i][3]", on fait une rotation d'angle "sum" pour compenser la torsion
@@ -956,6 +1029,10 @@ void Branch::CreateCircleCoordinates(const unsigned int& primitive_size)
         }
 
     }
+
+    /*
+    for(unsigned int l = 0; l < branch_size_; l++)
+        pos_vertices_.insert( pos_vertices_.begin() + (branch_size_ - 1 - l)*primitive_size  ,articulations_[branch_size_ - 1 - l].head<3>());*/
 }
 
 void Branch::ComputeMatrixFromBranch()

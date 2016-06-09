@@ -91,18 +91,23 @@ public:
 
 	virtual void keyPressEvent(QKeyEvent *);
     void mousePressEvent(QMouseEvent*);
-    void MakeFromBranch(const std::vector<Vec3>& positions, const unsigned int& primitives);
+    void MakeFromBranch(const std::vector<Vec3>&, const unsigned int&, const unsigned int&);
     //void OrientationFromSkel
 	virtual ~Viewer();
 	virtual void closeEvent(QCloseEvent *e);
 
+    std::vector<Dart> volume_control_;
+
 private:
 
     Map3 map_;
+    Map3 map2_;
 
 	VertexAttribute<Vec3> vertex_position_;
 	VertexAttribute<Vec3> vertex_position2_;
     VertexAttribute<Vec3> vertex_normal_;
+
+
 
     cgogn::CellCache<Map3> cell_cache_prec_;
 
@@ -138,19 +143,19 @@ private:
 //
 
 
-void Viewer::MakeFromBranch(const std::vector<Vec3>& positions, const unsigned int& primitives)
+void Viewer::MakeFromBranch(const std::vector<Vec3>& positions, const unsigned int& primitives, const unsigned int& Nb_subdiv)
 {
     MapBuilder mbuild(map_);
 
+    std::vector<Dart> nouv_darts;
     int nb_articulation = positions.size()/(primitives+1);
-    std::vector<Dart> volume_control;
     int volume_count=0;
     unsigned int count = 0;
     unsigned int arti_count = 0;
 
     // creation de nos volumes
     for(int n = primitives ; n < nb_articulation*primitives ; n++)
-        volume_control.push_back(mbuild.add_prism_topo(3));//construit le prisme et renvoi un dart du prisme d'une des faces triangulaires, rendant un parcourt du prisme possible
+        volume_control_.push_back(mbuild.add_prism_topo(3));//construit le prisme et renvoi un dart du prisme d'une des faces triangulaires, rendant un parcourt du prisme possible
 
 
     for(int m = 1 ; m < nb_articulation-1 ; m++)
@@ -158,17 +163,17 @@ void Viewer::MakeFromBranch(const std::vector<Vec3>& positions, const unsigned i
         for(int k = 0; k < primitives; k++)
         {
             // coudre les faces triangulaires des prismes(3d)
-            Dart v1 = map_.phi2(map_.phi1(map_.phi1(map_.phi2(volume_control[(m-1)*primitives + k]))));
-            Dart v2 = volume_control[m*primitives + k];
+            Dart v1 = map_.phi2(map_.phi1(map_.phi1(map_.phi2(volume_control_[(m-1)*primitives + k]))));
+            Dart v2 = volume_control_[m*primitives + k];
             mbuild.sew_volumes(Volume(v1), Volume(v2));
 
             // coudre les faces rectangulaires des prismes(3d)
-            Dart v3 = map_.phi2(map_.phi1(volume_control[(m-1)*primitives + k]));
+            Dart v3 = map_.phi2(map_.phi1(volume_control_[(m-1)*primitives + k]));
             Dart v4;
             if(k+1 != primitives)
-                v4 = map_.phi2(volume_control[(m-1)*primitives + k + 1]);
+                v4 = map_.phi2(volume_control_[(m-1)*primitives + k + 1]);
             else
-                v4 = map_.phi2(volume_control[(m-1)*primitives]);
+                v4 = map_.phi2(volume_control_[(m-1)*primitives]);
             mbuild.sew_volumes(Volume(v3), Volume(v4));
         }
     }
@@ -177,15 +182,14 @@ void Viewer::MakeFromBranch(const std::vector<Vec3>& positions, const unsigned i
     // dernière serie de volumes (bout de branche)
     for(int k = 0; k < primitives; k++)
     {
-        Dart v3 = map_.phi2(map_.phi1(volume_control[(nb_articulation-2)*primitives + k]));
+        Dart v3 = map_.phi2(map_.phi1(volume_control_[(nb_articulation-2)*primitives + k]));
         Dart v4;
         if(k+1 != primitives)
-            v4 = map_.phi2(volume_control[(nb_articulation-2)*primitives + k + 1]);
+            v4 = map_.phi2(volume_control_[(nb_articulation-2)*primitives + k + 1]);
         else
-            v4 = map_.phi2(volume_control[(nb_articulation-2)*primitives]);
+            v4 = map_.phi2(volume_control_[(nb_articulation-2)*primitives]);
         mbuild.sew_volumes(Volume(v3), Volume(v4));
     }
-
 
     mbuild.close_map(); //reboucle les volumes en bord de map
 
@@ -200,7 +204,7 @@ void Viewer::MakeFromBranch(const std::vector<Vec3>& positions, const unsigned i
 
 
     // affectation d'un point du prisme triangulaire & du point en commun aux n-prismes (n = primitive)
-    for(Dart d : volume_control)
+    for(Dart d : volume_control_)
     {
         // il s'agit des positions des articulations
         if(count == 0 || count == primitives + 1 )
@@ -219,17 +223,18 @@ void Viewer::MakeFromBranch(const std::vector<Vec3>& positions, const unsigned i
 
 
     // On gère la dernière articulation
-    Dart last_arti = map_.phi1(map_.phi1(map_.phi2(map_.phi1(volume_control[volume_control.size() - primitives]))));
+    Dart last_arti = map_.phi1(map_.phi1(map_.phi2(map_.phi1(volume_control_[volume_control_.size() - primitives]))));
     Vertex arti(last_arti);
-    vertex_position_[arti] = positions[volume_control.size() + nb_articulation - 1];
+    vertex_position_[arti] = positions[volume_control_.size() + nb_articulation - 1];
 
     // Ici, on gere la derniere face (les points autour de la dernière articulation)
     for(unsigned int i = 0; i < primitives; i++)
     {
-        Dart last_points = map_.phi1(map_.phi2(map_.phi1(map_.phi1(map_.phi2(volume_control[volume_control.size()-primitives + i])))));
+        Dart last_points = map_.phi1(map_.phi2(map_.phi1(map_.phi1(map_.phi2(volume_control_[volume_control_.size()-primitives + i])))));
         Vertex points(last_points);
-        vertex_position_[points] = positions[volume_control.size() + nb_articulation + i];
+        vertex_position_[points] = positions[volume_control_.size() + nb_articulation + i];
     }
+
 
     map_.check_map_integrity();
 
@@ -302,7 +307,118 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
             bb_rendering_ = !bb_rendering_;
             break;
         case Qt::Key_C:
-            // modif map_
+        {
+            unsigned int k = 0;
+            unsigned int j = 0;
+            std::vector<Dart> nouv_vertex;
+            std::vector<Edge> face_limits;
+
+            for(Dart d : volume_control_)
+            {
+                Dart v = map_.cut_edge(Edge(d)).dart;
+                nouv_vertex.push_back(v);
+                vertex_position_[Vertex(v)] = (vertex_position_[Vertex(map_.phi1(v))] + vertex_position_[Vertex(map_.phi_1(v))])/2;
+            }
+
+            // dernière arti
+            for(unsigned int i = 0; i < TYPE_PRIMITIVE; i++)
+            {
+                Dart last_seg = map_.phi2(map_.phi1(map_.phi1(map_.phi2(volume_control_[volume_control_.size() - TYPE_PRIMITIVE + i]))));
+                Vertex v = map_.cut_edge(Edge(last_seg));
+                Dart dv = v.dart;
+                nouv_vertex.push_back(dv);
+
+                vertex_position_[v] = (vertex_position_[Vertex(map_.phi_1(dv))] + vertex_position_[Vertex(map_.phi1(dv))])/2;
+
+            }
+
+            // OK
+            for(Dart d : volume_control_)
+            {
+                Dart v_int_bottom = map_.phi_1(map_.phi_1(map_.phi2(nouv_vertex[k + j*TYPE_PRIMITIVE])));
+                Dart v_int_top = map_.phi1(map_.phi2(nouv_vertex[k + j*TYPE_PRIMITIVE]));
+                face_limits.push_back(map_.cut_face(v_int_top, v_int_bottom));
+
+                if(k + 1 == TYPE_PRIMITIVE )
+                {
+                    Dart v_int_side = map_.phi<2321>(nouv_vertex[j*TYPE_PRIMITIVE]);
+                    face_limits.push_back(map_.cut_face(nouv_vertex[k + j*TYPE_PRIMITIVE], v_int_side)); // On coupe la face triangulaire du dernier volume autour de l'articulation
+                    k=0;
+                    j++;
+                }
+                else
+                {
+                    Dart v_int_side = map_.phi<2321>(nouv_vertex[k + 1 + j*TYPE_PRIMITIVE]);
+                    face_limits.push_back(map_.cut_face(nouv_vertex[k + j*TYPE_PRIMITIVE], v_int_side)); // On coupe une face triangulaire
+                    k++;
+                }
+            }
+
+            // dernière arti OK
+            for(unsigned int i = 0; i < TYPE_PRIMITIVE; i++)
+            {
+                if(i + 1 == TYPE_PRIMITIVE )
+                {
+                    Dart v_int_side = map_.phi<2321>(nouv_vertex[j*TYPE_PRIMITIVE]);
+                    face_limits.push_back(map_.cut_face(nouv_vertex[j*TYPE_PRIMITIVE + i], v_int_side)); // on coupe une face triangulaire du dernier volume
+                }
+                else
+                {
+                    Dart v_int_side = map_.phi<2321>(nouv_vertex[j*TYPE_PRIMITIVE + i + 1]);
+                    face_limits.push_back(map_.cut_face(nouv_vertex[j*TYPE_PRIMITIVE + i], v_int_side)); // on coupe une face triangulaire des volumes autour de la dernière arti
+                }
+            }
+
+
+            std::cout<< "taille face_limits " << face_limits.size()<< std::endl;
+
+            unsigned int volume_count = 0;
+            map_.foreach_cell([&] (Volume v){ volume_count++; }); // affichage du nombre de volumes
+            std::cout << " Il y a " << volume_count << " Volume(s)" << std::endl;
+
+            for(Dart d : volume_control_)
+            {
+                //
+                // version avec les indices (incomplète)
+                //
+                /*
+                std::vector<Edge> face_int;
+
+                face_int.push_back(face_limits[count + 1]);
+                face_int.push_back(face_limits[count]);
+                Edge eb(map_.phi3(face_limits[2*(TYPE_PRIMITIVE) + 1 + count].dart));
+                face_int.push_back(eb);
+                if((count % (2*TYPE_PRIMITIVE)) != 0)
+                {
+                    Edge es(map_.phi3(face_limits[count - 2].dart));
+                    face_int.push_back(es);
+                }
+                else
+                {
+                    Edge es(map_.phi3(face_limits[count + 2*(TYPE_PRIMITIVE - 1)].dart));
+                    face_int.push_back(es);
+                }
+                */
+
+
+                //
+                // version avec les manipulation phi<>
+                //
+                std::vector<Dart> face_int;
+                Dart dd = map_.phi1(d);
+                face_int.push_back(dd);
+                dd = map_.phi<121>(dd);
+                face_int.push_back(dd);
+                dd = map_.phi<121>(dd);
+                face_int.push_back(dd);
+                dd = map_.phi<121>(dd);
+                face_int.push_back(dd);
+
+                Face f = map_.cut_volume(face_int);
+
+            }
+
+            map_.check_map_integrity();
             // modif vertex_position_
             cgogn::rendering::update_vbo(vertex_position_, vbo_pos_);
             volume_drawer_->update_face<Vec3>(map_, vertex_position_);
@@ -310,6 +426,8 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
             topo_drawer_->update<Vec3>(map_, vertex_position_);
             render_->init_primitives<Vec3>(map_, cgogn::rendering::POINTS);
             break;
+        }
+
 		default:
 			break;
 	}
@@ -441,7 +559,8 @@ int main(int argc, char** argv)
     Viewer viewer;
 	viewer.setWindowTitle("simpleViewer");
 
-    viewer.MakeFromBranch(branche.pos_vertices_, TYPE_PRIMITIVE );
+    viewer.MakeFromBranch(branche.pos_vertices_, TYPE_PRIMITIVE, 0 );
+
     viewer.move(105,68);
     viewer.show();
 

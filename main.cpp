@@ -91,7 +91,7 @@ public:
 
 	virtual void keyPressEvent(QKeyEvent *);
     void mousePressEvent(QMouseEvent*);
-    void MakeFromBranch(const std::vector<Vec3>&, const unsigned int&, const unsigned int&);
+    void MakeFromBranch(const std::vector<Vec3>&, const unsigned int&);
     //void OrientationFromSkel
 	virtual ~Viewer();
 	virtual void closeEvent(QCloseEvent *e);
@@ -106,8 +106,6 @@ private:
 	VertexAttribute<Vec3> vertex_position_;
 	VertexAttribute<Vec3> vertex_position2_;
     VertexAttribute<Vec3> vertex_normal_;
-
-
 
     cgogn::CellCache<Map3> cell_cache_prec_;
 
@@ -143,11 +141,10 @@ private:
 //
 
 
-void Viewer::MakeFromBranch(const std::vector<Vec3>& positions, const unsigned int& primitives, const unsigned int& Nb_subdiv)
+void Viewer::MakeFromBranch(const std::vector<Vec3>& positions, const unsigned int& primitives)
 {
     MapBuilder mbuild(map_);
 
-    std::vector<Dart> nouv_darts;
     int nb_articulation = positions.size()/(primitives+1);
     int volume_count=0;
     unsigned int count = 0;
@@ -217,15 +214,18 @@ void Viewer::MakeFromBranch(const std::vector<Vec3>& positions, const unsigned i
 
         // ici on a la position des points autour de chaque articulation
         Vertex v2(d);
-        vertex_position_[v2] = positions[(arti_count-1) * (primitives + 1) + count];
+        vertex_position_[v2] = positions[(arti_count-1) * (primitives + 1) + count]; // le facteur est (arti_count - 1) car on a arti_count++ dans le if
         count++;
     }
 
 
+
+
     // On gère la dernière articulation
-    Dart last_arti = map_.phi1(map_.phi1(map_.phi2(map_.phi1(volume_control_[volume_control_.size() - primitives]))));
-    Vertex arti(last_arti);
-    vertex_position_[arti] = positions[volume_control_.size() + nb_articulation - 1];
+
+    Dart last_arti = map_.phi1(map_.phi1(map_.phi2(map_.phi1(volume_control_[volume_control_.size() - 1]))));
+
+    vertex_position_[Vertex(last_arti)] = positions[(primitives+1)*(nb_articulation-1)];
 
     // Ici, on gere la derniere face (les points autour de la dernière articulation)
     for(unsigned int i = 0; i < primitives; i++)
@@ -313,11 +313,13 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
             std::vector<Dart> nouv_vertex;
             std::vector<Edge> face_limits;
 
+
+
             for(Dart d : volume_control_)
             {
                 Dart v = map_.cut_edge(Edge(d)).dart;
                 nouv_vertex.push_back(v);
-                vertex_position_[Vertex(v)] = (vertex_position_[Vertex(map_.phi1(v))] + vertex_position_[Vertex(map_.phi_1(v))])/2;
+                vertex_position_[Vertex(v)] = (vertex_position_[Vertex(map_.phi1(v))]*(1 - MASK_SUBDIV_RAY) + vertex_position_[Vertex(map_.phi_1(v))]*MASK_SUBDIV_RAY);
             }
 
             // dernière arti
@@ -328,11 +330,11 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
                 Dart dv = v.dart;
                 nouv_vertex.push_back(dv);
 
-                vertex_position_[v] = (vertex_position_[Vertex(map_.phi_1(dv))] + vertex_position_[Vertex(map_.phi1(dv))])/2;
+                vertex_position_[v] = (vertex_position_[Vertex(map_.phi_1(dv))]*(1 - MASK_SUBDIV_RAY) + vertex_position_[Vertex(map_.phi1(dv))]*MASK_SUBDIV_RAY);
 
             }
 
-            // OK
+
             for(Dart d : volume_control_)
             {
                 Dart v_int_bottom = map_.phi_1(map_.phi_1(map_.phi2(nouv_vertex[k + j*TYPE_PRIMITIVE])));
@@ -354,7 +356,7 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
                 }
             }
 
-            // dernière arti OK
+            // dernière arti
             for(unsigned int i = 0; i < TYPE_PRIMITIVE; i++)
             {
                 if(i + 1 == TYPE_PRIMITIVE )
@@ -370,11 +372,7 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
             }
 
 
-            std::cout<< "taille face_limits " << face_limits.size()<< std::endl;
 
-            unsigned int volume_count = 0;
-            map_.foreach_cell([&] (Volume v){ volume_count++; }); // affichage du nombre de volumes
-            std::cout << " Il y a " << volume_count << " Volume(s)" << std::endl;
 
             for(Dart d : volume_control_)
             {
@@ -400,11 +398,12 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
                 }
                 */
 
-
                 //
                 // version avec les manipulation phi<>
                 //
+
                 std::vector<Dart> face_int;
+
                 Dart dd = map_.phi1(d);
                 face_int.push_back(dd);
                 dd = map_.phi<121>(dd);
@@ -418,8 +417,11 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
 
             }
 
+            unsigned int volume_count = 0;
+            map_.foreach_cell([&] (Volume v){ volume_count++; }); // affichage du nombre de volumes
+            std::cout << " Il y a " << volume_count << " Volume(s)" << std::endl;
+
             map_.check_map_integrity();
-            // modif vertex_position_
             cgogn::rendering::update_vbo(vertex_position_, vbo_pos_);
             volume_drawer_->update_face<Vec3>(map_, vertex_position_);
             volume_drawer_->update_edge<Vec3>(map_, vertex_position_);
@@ -544,6 +546,7 @@ int main(int argc, char** argv)
 
     Branch branche("../../TubularMesh/multibranch");
     //Branch branche("../../TubularMesh/multibranch_cave");
+    //Branch branche;
 
     branche.BranchSimplify(DISTANCE_MIN);
     //branche.SubdiBranch( COURBURE_MAX );
@@ -559,7 +562,7 @@ int main(int argc, char** argv)
     Viewer viewer;
 	viewer.setWindowTitle("simpleViewer");
 
-    viewer.MakeFromBranch(branche.pos_vertices_, TYPE_PRIMITIVE, 0 );
+    viewer.MakeFromBranch(branche.pos_vertices_, TYPE_PRIMITIVE);
 
     viewer.move(105,68);
     viewer.show();

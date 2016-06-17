@@ -36,7 +36,7 @@ Branch::Branch()
     */
 
     // random
-/*
+    /*
     Vec4 V_externe_begin(0.0, 0.0, 0.0, 6.0);
     Vec4 Vprec = V_externe_begin;
     Vec4 Vcourant;
@@ -48,7 +48,7 @@ Branch::Branch()
 
     srand(time(NULL));
     int i_end = rand() % 10 + 3;
-    for(int i = 0; i < 8000; i++ )
+    for(int i = 0; i < 80; i++ )
     {
 
         rand1=(rand() % 20000 + 200);
@@ -83,10 +83,10 @@ Branch::Branch()
     articulation_externe_end_[3]= 6;
     articulation_externe_begin_ = V_externe_begin;
     //articulation_externe_end_ = V_externe_end;
-
 */
+
     // true
-/*
+    /*
     // 1-2
     Vec4 V43(157.529, 165.104, 143.265, 10.6542);//
     Vec4 V44(156.741, 165.766, 143.338, 10.6164);//
@@ -170,8 +170,7 @@ Branch::Branch()
     articulations_.push_back(V4z);
     articulations_.push_back(V40);
     articulations_.push_back(V41);
-    articulations_.push_back(V42);
-*/
+    articulations_.push_back(V42);*/
 
     // global
     /*
@@ -213,7 +212,8 @@ Branch::Branch()
     articulations_.push_back(V4c);
     articulations_.push_back(V4d);
     articulations_.push_back(V4e);
-    */
+
+*/
 
     // petit test d'orientation (cas particulier)
     /*
@@ -231,7 +231,7 @@ Branch::Branch()
     articulations_.push_back(V42);
     articulations_.push_back(V43);*/
 
-    //branch_size_= articulations_.size();
+    branch_size_= articulations_.size();
 
 }
 
@@ -274,7 +274,7 @@ Branch::Branch(const std::string& filename)
         }
         else{fp.ignore(std::numeric_limits<std::streamsize>::max(), ' ');} // decalage au mot suivant
 
-        check = !fp.eof(); // verifie si l'on en a terminé avec le fichier
+        check = !fp.eof(); // verifie si on a terminé avec le fichier
 
     }
 
@@ -353,14 +353,31 @@ void Branch::BranchSimplify(const double& tolerance)
     // création du nouveau vector articulation_, à l'aide des indices des points à garder que l'on vient  d'obtenir (contenus dans indices)
     //
 
+    //int counting = 0;;
     for(it = indices.begin(); it < indices.end(); ++it)
+    {
+        //counting++;
+        //std::cout<< " articulation courante " << " X = " << articulations_[*it][0] << " Y = " <<  articulations_[*it][1] << " Z = " << articulations_[*it][2] << " counting : "<< counting << std::endl;
         copie_articulation.push_back(articulations_[*it]);
+    }
 
     articulations_.clear();
     articulations_ = copie_articulation;
     branch_size_ = articulations_.size();
 
-    std::cout<< "articulations : " << branch_size_ << std::endl;
+    //std::cout << "articulations : " << branch_size_ << std::endl;
+    //std::cout << "arti_exterieure " << articulation_externe_end_ << std::endl;
+
+    /*
+    Vec3 AB = copie_articulation[copie_articulation.size()-1].head<3>() - copie_articulation[copie_articulation.size()-2].head<3>();
+    Vec3 AA = copie_articulation[copie_articulation.size()-2].head<3>() - copie_articulation[copie_articulation.size()-3].head<3>();
+    Vec3 BB = copie_articulation[copie_articulation.size()-1].head<3>() - articulation_externe_end_.head<3>();
+    AA.normalize();
+    AA = AA*AB.norm();
+    BB.normalize();
+    BB=BB*AB.norm();
+    Vec3 Res = AB/2 + BB/16 + AA/16 + copie_articulation[copie_articulation.size()-2].head<3>();
+    std::cout << "nouv_arti : X =  " << Res[0] << " Y = " << Res[1] << " Z = " << Res[2] << std::endl;*/
 
 
 }
@@ -491,7 +508,6 @@ void Branch::SubdiBranch(const double& seuil)
                     // interpolation linéaire pour le rayon
                     joint[3] = (articulations_[size_courbure - 2][3] + articulations_[size_courbure - 1][3])/2;
 
-                    std::cout<< " c =" << courbure_[size_courbure -2] << " dernier indice "<< std::endl;
                     points_inter.push_back(joint);
                     pos.push_back(size_courbure - 2);
                 }
@@ -506,8 +522,6 @@ void Branch::SubdiBranch(const double& seuil)
                 decalage = pos[size_indices - 1 - j] + 1; // indice où placer le nouveau point
                 nouv_arti = points_inter[size_indices - 1 - j]; // nouveau point à inserer
                 articulations_.insert(articulations_.begin() + decalage, nouv_arti);
-                std::cout<< " itération "<< j << "  X  "<< nouv_arti[0] << "  Y  "<< nouv_arti[1] << "  Z  "<< nouv_arti[2] << "  R  "<< nouv_arti[3] << std::endl;
-
             }
 
             offset++; // passage à 1 => indice impaire vont être testés ou à 2 => sortie de boucle car tout a été testé
@@ -615,7 +629,6 @@ void Branch::SubdiDirectionT(const double& seuil, const unsigned int& primitive)
     bool modif = true; // pour rentrer dans la boucle
 
     ComputeCourbureMax(primitive); // nous donnes les courbures max en chaque face (transversales) du tube
-
 
 
     //
@@ -769,19 +782,19 @@ void Branch::SubdiDirectionT(const double& seuil, const unsigned int& primitive)
 
 
             //
-            // test de courbure en i = imax
+            // test de courbure en i = imax si l'on est dans la bonne itération du while(offset)
             //
-
-            if(((size_courbure) %2 && offset == 0) || ((size_courbure + 1) %2 && offset == 1) )
+            if(((size_courbure)%2 == 0  && offset == 0) || ((size_courbure + 1)%2 == 0 && offset == 1) ) // selon si imax est paire ou bien impaire, pour qu'on ne le vérifie qu'une seule fois
             {
                 if(courbure_max_[size_courbure - 2] > seuil)
                 {
-
                     //
                     // Creation de la nouvelle articulation
 
                     // Segment [AB] que l'on veut détruire par subdivision
                     AB = pos_vertices_[(size_courbure - 1)*(primitive + 1)] - pos_vertices_[(size_courbure - 2)*(primitive + 1)];
+                    //std::cout << " segment à détruire que l'on a " << AB << std::endl;
+                    //std::cout << " segment à détruire que l'on devrait avoir " << articulations_[articulations_.size() - 1].head<3>() - articulations_[articulations_.size() - 2].head<3>() << std::endl;
 
                     // Calcul de la tangente arrivant sur A, que l'on normalise car rapport à la norme de [AB] pour quelle soit du meme ordre de grandeur
                     AA = pos_vertices_[(size_courbure - 2)*(primitive + 1)]- pos_vertices_[(size_courbure - 3)*(primitive + 1)]; // le mieux est de prendre la tangente de type squelette car on a pas la vraie tangente en ce point
@@ -802,7 +815,7 @@ void Branch::SubdiDirectionT(const double& seuil, const unsigned int& primitive)
 
 
                     //
-                    // Creation des nouveaux points autour de la nouvelle articulation articulation
+                    // Creation des nouveaux points autour de la nouvelle articulation
 
                     // On créer AA, AB, BB en chaque point
                     for(int j = 0; j < primitive; j++)
@@ -820,11 +833,11 @@ void Branch::SubdiDirectionT(const double& seuil, const unsigned int& primitive)
                         BB.normalize();
                         BB = BB*AB.norm();
 
-                        // interpolation spline cubique pour les coordonées XYZ
-                        nouv_point[0] = pos_vertices_[(size_courbure - 2)*(primitive + 1) + j + 1][0] + AB[0]/2 + AA[0]/16 - BB[0]/16;
-                        nouv_point[1] = pos_vertices_[(size_courbure - 2)*(primitive + 1) + j + 1][1] + AB[1]/2 + AA[1]/16 - BB[1]/16;
-                        nouv_point[2] = pos_vertices_[(size_courbure - 2)*(primitive + 1) + j + 1][2] + AB[2]/2 + AA[2]/16 - BB[2]/16;
 
+                        // interpolation spline cubique pour les coordonées XYZ
+                        nouv_point[0] = pos_vertices_[(size_courbure - 2)*(primitive + 1) + j + 1][0] + AB[0]/2 + AA[0]/16 + BB[0]/16;
+                        nouv_point[1] = pos_vertices_[(size_courbure - 2)*(primitive + 1) + j + 1][1] + AB[1]/2 + AA[1]/16 + BB[1]/16;
+                        nouv_point[2] = pos_vertices_[(size_courbure - 2)*(primitive + 1) + j + 1][2] + AB[2]/2 + AA[2]/16 + BB[2]/16;
                         points_inter.push_back(nouv_point); // on rempli un vector intermédiaire, avec nos points interpolés
                     }
 
@@ -850,19 +863,6 @@ void Branch::SubdiDirectionT(const double& seuil, const unsigned int& primitive)
 
                 pos_vertices_.insert(pos_vertices_.begin() + (decalage + 1)*(primitive + 1) , points_inter.begin() + (size_indices - 1 - k)*(primitive + 1), points_inter.begin() + (size_indices - k)*(primitive + 1) );
 
-                //pos_vertices_.insert(pos_vertices_.begin() + (decalage+1)*primitive, points_inter.begin() + (size_indices - 1 - k)*primitive, points_inter.begin() + (size_indices - k)*primitive );
-
-                /*
-                for(int j = 0; j< primitive ; j++)
-                {
-
-                    nouv_point = points_inter[(size_indices-k)*primitive - j-1];
-                    pos_vertices_.insert(pos_vertices_.begin() + (decalage+1)*primitive - j + count, nouv_point );
-                    count++;
-
-
-                }*/
-
             }
 
             offset++; // passage à 1 => indice impaire vont être testés ou à 2 => sortie de boucle car tout a été testé
@@ -874,7 +874,6 @@ void Branch::SubdiDirectionT(const double& seuil, const unsigned int& primitive)
 
         }
     }
-
 }
 
 void Branch::ComputeCourbureMax(const unsigned int& primitive)

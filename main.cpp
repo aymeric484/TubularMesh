@@ -92,16 +92,21 @@ public:
 	virtual void keyPressEvent(QKeyEvent *);
     void mousePressEvent(QMouseEvent*);
     void MakeFromBranch(const std::vector<Vec3>&, const unsigned int&);
+
     //void OrientationFromSkel
 	virtual ~Viewer();
 	virtual void closeEvent(QCloseEvent *e);
 
-    std::vector<Dart> volume_control_;
+
 
 private:
 
+
+    void ComputeNewCoordinates();
+
     Map3 map_;
-    Map3 map2_;
+
+    std::vector<Dart> volume_control_;
 
 	VertexAttribute<Vec3> vertex_position_;
 	VertexAttribute<Vec3> vertex_position2_;
@@ -133,6 +138,8 @@ private:
 	bool bb_rendering_;
 
     float volume_expl_;
+    int nb_appuis_;
+    int indice_repartition_;
 };
 
 
@@ -247,6 +254,84 @@ void Viewer::MakeFromBranch(const std::vector<Vec3>& positions, const unsigned i
 
 }
 
+void Viewer::ComputeNewCoordinates()
+{
+    if(nb_appuis_ > 0)
+    {
+        double Terme_repartition = exp(indice_repartition_*0.02) - 1;
+        //double Terme_repartition = (1 + tanh(indice_repartition_*0.2))*10 - 1;
+
+        std::cout << "Terme repartition" << Terme_repartition << std::endl;
+
+        for(Dart d : volume_control_)
+        {
+            Dart d_centre = d;
+            Dart d_bord = d;
+
+            for(int k = 0; k < nb_appuis_; k++)
+            {
+                d_centre = map_.phi<12321>(d_centre);
+            }
+            d_centre = map_.phi1(d_centre);
+
+
+            for(int i = 1; i < nb_appuis_ + 1; i++)
+            {
+
+                double coeff;
+                double m = double(i);
+                double n = double(nb_appuis_ + 1);
+                //coeff = m/(n + 1/indice_repartition_);
+                coeff = m/(n + Terme_repartition);
+
+                d = map_.phi<12321>(d);
+                vertex_position_[Vertex(d)] = coeff*vertex_position_[Vertex(d_centre)] + (1-coeff)*vertex_position_[Vertex(d_bord)];
+
+            }
+        }
+
+        for(int i = 0; i < TYPE_PRIMITIVE; i++)
+        {
+
+            Dart d = map_.phi<211>(volume_control_[volume_control_.size()-TYPE_PRIMITIVE+i]);
+            Dart d_bord = d;
+            Dart d_centre = d; // le recalculer dans la boucle peut être inutile pour cette dernière face
+
+            //calcul du centre
+            for(int k = 0; k < nb_appuis_; k++)
+            {
+                d_centre = map_.phi<1213121>(d_centre);
+            }
+            d_centre = map_.phi1(d_centre);
+
+            //calcul de chaque points
+            for(int i = 1; i < nb_appuis_ + 1; i++)
+            {
+                double coeff;
+                double m = double(i);
+                double n = double(nb_appuis_ + 1);
+                //coeff = m/(n + 1/indice_repartition_);
+                coeff = m/(n + Terme_repartition);
+
+                d = map_.phi<1213121>(d);
+                vertex_position_[Vertex(d)] = coeff*vertex_position_[Vertex(d_centre)] + (1-coeff)*vertex_position_[Vertex(d_bord)];
+
+            }
+
+
+
+        }
+
+
+        cgogn::rendering::update_vbo(vertex_position_, vbo_pos_);
+        volume_drawer_->update_face<Vec3>(map_, vertex_position_);
+        volume_drawer_->update_edge<Vec3>(map_, vertex_position_);
+        topo_drawer_->update<Vec3>(map_, vertex_position_);
+        render_->init_primitives<Vec3>(map_, cgogn::rendering::POINTS);
+    }
+
+}
+
 Viewer::~Viewer()
 {}
 
@@ -279,19 +364,69 @@ Viewer::Viewer() :
     edge_rendering_(false),
     bb_rendering_(true),
     volume_expl_(0.8f)
-{}
+{
+    nb_appuis_ = 0;
+    indice_repartition_ = 0;
+}
 
 void Viewer::keyPressEvent(QKeyEvent *ev)
 {
 	switch (ev->key()) {
         case Qt::Key_Minus:
         {
+            indice_repartition_--;
+            ComputeNewCoordinates();
             std::cout<<"minus"<<std::endl;
             break;
         }
         case Qt::Key_Plus:
         {
+            indice_repartition_++;
+            ComputeNewCoordinates();
             std::cout<<"plus"<<std::endl;
+            /*
+            // vérif condition nb_appui <> 0
+            if(nb_appuis_ > 0)
+            {
+                indice_repartition_++;
+                double Terme_repartition = exp(indice_repartition_*0.02) - 1;
+                //double Terme_repartition = (1 + tanh(indice_repartition_*0.2))*10 - 1;
+
+                std::cout << "Terme repartition" << Terme_repartition << std::endl;
+
+                for(Dart d : volume_control_)
+                {
+                    Dart d_centre = d;
+                    Dart d_bord = d;
+
+                    for(int k = 0; k < nb_appuis_; k++)
+                    {
+                        d_centre = map_.phi<12321>(d_centre);
+                    }
+                    d_centre = map_.phi1(d_centre);
+
+
+                    for(int i = 1; i < nb_appuis_ + 1; i++)
+                    {
+
+                        double coeff;
+                        double m = double(i);
+                        double n = double(nb_appuis_ + 1);
+                        //coeff = m/(n + 1/indice_repartition_);
+                        coeff = m/(n + Terme_repartition);
+
+                        d = map_.phi<12321>(d);
+                        vertex_position_[Vertex(d)] = coeff*vertex_position_[Vertex(d_centre)] + (1-coeff)*vertex_position_[Vertex(d_bord)];
+
+                    }
+                }
+                std::cout<<"plus"<<std::endl;
+                cgogn::rendering::update_vbo(vertex_position_, vbo_pos_);
+                volume_drawer_->update_face<Vec3>(map_, vertex_position_);
+                volume_drawer_->update_edge<Vec3>(map_, vertex_position_);
+                topo_drawer_->update<Vec3>(map_, vertex_position_);
+                render_->init_primitives<Vec3>(map_, cgogn::rendering::POINTS);
+            }*/
             break;
         }
 		case Qt::Key_E:
@@ -313,6 +448,8 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
             std::vector<Dart> nouv_vertex;
             std::vector<Edge> face_limits;
 
+
+            nb_appuis_++;
 
 
             for(Dart d : volume_control_)
@@ -417,16 +554,14 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
 
             }
 
+            ComputeNewCoordinates();
+
+            map_.check_map_integrity();
+
             unsigned int volume_count = 0;
             map_.foreach_cell([&] (Volume v){ volume_count++; }); // affichage du nombre de volumes
             std::cout << " Il y a " << volume_count << " Volume(s)" << std::endl;
 
-            map_.check_map_integrity();
-            cgogn::rendering::update_vbo(vertex_position_, vbo_pos_);
-            volume_drawer_->update_face<Vec3>(map_, vertex_position_);
-            volume_drawer_->update_edge<Vec3>(map_, vertex_position_);
-            topo_drawer_->update<Vec3>(map_, vertex_position_);
-            render_->init_primitives<Vec3>(map_, cgogn::rendering::POINTS);
             break;
         }
 

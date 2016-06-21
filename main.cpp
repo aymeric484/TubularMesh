@@ -256,78 +256,95 @@ void Viewer::MakeFromBranch(const std::vector<Vec3>& positions, const unsigned i
 
 void Viewer::ComputeNewCoordinates()
 {
+
+    //
+    // si pas d'appuis sur "C" alors la méthode est inutile car il n'y a pas eu de subdivision
+    //
     if(nb_appuis_ > 0)
     {
-        double Terme_repartition = exp(indice_repartition_*0.02) - 1;
+
+        // ce terme sert à répartit les points le long d'un segment bord-centre pour chaque volumes
+        //double Terme_repartition = exp(indice_repartition_*0.02) - 1;
         //double Terme_repartition = (1 + tanh(indice_repartition_*0.2))*10 - 1;
 
-        std::cout << "Terme repartition" << Terme_repartition << std::endl;
+        //std::cout << "Terme repartition" << Terme_repartition << std::endl;
 
+        //
+        // Sur tout les volumes sauf ceux de la dernière articulation
         for(Dart d : volume_control_)
         {
-            Dart d_centre = d;
-            Dart d_bord = d;
+            Dart d_centre = d; // d_centre sera modifié
+            Dart d_bord = d; // on commence au bord, il s'agit bien de notre Dart de bord final
 
+
+            // Objectif => trouver le centre
             for(int k = 0; k < nb_appuis_; k++)
             {
-                d_centre = map_.phi<12321>(d_centre);
+                d_centre = map_.phi<12321>(d_centre); // déplacement sur chaque nouveau volume ajouté par subdivision concentrique
             }
+            // Le dernier volume que l'on trouve en se propageant vers le centre est un prisme à base triangulaire. Phi1 nous donne le centre
             d_centre = map_.phi1(d_centre);
 
 
+            // Objectif => affecter les bonnes coordonées aux point du segment bord-centre, pour chaque volume
             for(int i = 1; i < nb_appuis_ + 1; i++)
             {
+                double Terme_repartition = exp(indice_repartition_*0.04) + (nb_appuis_ + 1) - i;
 
+                // on ne veut pas tronquer coeff (division d'entiers euclidienne pas correcte ici), d'où les casts double
                 double coeff;
                 double m = double(i);
                 double n = double(nb_appuis_ + 1);
-                //coeff = m/(n + 1/indice_repartition_);
                 coeff = m/(n + Terme_repartition);
 
-                d = map_.phi<12321>(d);
+                d = map_.phi<12321>(d); // déplacement sur chaque nouveau volume ajouté par subdivision concentrique
                 vertex_position_[Vertex(d)] = coeff*vertex_position_[Vertex(d_centre)] + (1-coeff)*vertex_position_[Vertex(d_bord)];
 
             }
         }
 
+        //
+        // Gestion de la dernière articulation
         for(int i = 0; i < TYPE_PRIMITIVE; i++)
         {
 
-            Dart d = map_.phi<211>(volume_control_[volume_control_.size()-TYPE_PRIMITIVE+i]);
-            Dart d_bord = d;
-            Dart d_centre = d; // le recalculer dans la boucle peut être inutile pour cette dernière face
+            Dart d = map_.phi<211>(volume_control_[volume_control_.size()-TYPE_PRIMITIVE+i]); // nous place sur un vertex de bord, de la dernière face
+            Dart d_bord = d; // On se situe maintenant sur le bord d'où cette affectation
+            Dart d_centre = d; // le recalculer dans la boucle peut être inutile pour cette dernière face vu que ce serq toujours le même Vertex
 
-            //calcul du centre
+            // Objectif => trouver le centre
             for(int k = 0; k < nb_appuis_; k++)
             {
-                d_centre = map_.phi<1213121>(d_centre);
+                d_centre = map_.phi<1213121>(d_centre); // déplacement sur chaque nouveau volume ajouté par subdivision concentrique
             }
             d_centre = map_.phi1(d_centre);
 
-            //calcul de chaque points
+            // Objectif => affecter les bonnes coordonées aux point du segment bord-centre, pour chaque volume de la dernière articulation
             for(int i = 1; i < nb_appuis_ + 1; i++)
             {
+                double Terme_repartition = exp(indice_repartition_*0.04) + (nb_appuis_ + 1) - i;
+
+                // on ne veut pas tronquer coeff (division d'entiers euclidienne pas correcte ici), d'où les casts double
                 double coeff;
                 double m = double(i);
                 double n = double(nb_appuis_ + 1);
-                //coeff = m/(n + 1/indice_repartition_);
-                coeff = m/(n + Terme_repartition);
 
-                d = map_.phi<1213121>(d);
+                coeff = m/(n + Terme_repartition); // poid qu'on associera à un bout du segment (point commun à tt les volumes de l'articulation => centre)
+
+
+                d = map_.phi<1213121>(d); // déplacement sur chaque nouveau volume ajouté par subdivision concentrique
                 vertex_position_[Vertex(d)] = coeff*vertex_position_[Vertex(d_centre)] + (1-coeff)*vertex_position_[Vertex(d_bord)];
 
             }
 
-
-
         }
 
-
+        // On met tout à jour pour le viewer (géométrie et topologie)
         cgogn::rendering::update_vbo(vertex_position_, vbo_pos_);
         volume_drawer_->update_face<Vec3>(map_, vertex_position_);
         volume_drawer_->update_edge<Vec3>(map_, vertex_position_);
         topo_drawer_->update<Vec3>(map_, vertex_position_);
-        render_->init_primitives<Vec3>(map_, cgogn::rendering::POINTS);
+        render_->init_primitives(map_, cgogn::rendering::POINTS);
     }
 
 }
@@ -375,58 +392,15 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
         case Qt::Key_Minus:
         {
             indice_repartition_--;
-            ComputeNewCoordinates();
+            ComputeNewCoordinates(); // Calcul des coordonées de chaque points ajouté par "C"
             std::cout<<"minus"<<std::endl;
             break;
         }
         case Qt::Key_Plus:
         {
             indice_repartition_++;
-            ComputeNewCoordinates();
+            ComputeNewCoordinates(); // Calcul des coordonées de chaque points ajouté par "C"
             std::cout<<"plus"<<std::endl;
-            /*
-            // vérif condition nb_appui <> 0
-            if(nb_appuis_ > 0)
-            {
-                indice_repartition_++;
-                double Terme_repartition = exp(indice_repartition_*0.02) - 1;
-                //double Terme_repartition = (1 + tanh(indice_repartition_*0.2))*10 - 1;
-
-                std::cout << "Terme repartition" << Terme_repartition << std::endl;
-
-                for(Dart d : volume_control_)
-                {
-                    Dart d_centre = d;
-                    Dart d_bord = d;
-
-                    for(int k = 0; k < nb_appuis_; k++)
-                    {
-                        d_centre = map_.phi<12321>(d_centre);
-                    }
-                    d_centre = map_.phi1(d_centre);
-
-
-                    for(int i = 1; i < nb_appuis_ + 1; i++)
-                    {
-
-                        double coeff;
-                        double m = double(i);
-                        double n = double(nb_appuis_ + 1);
-                        //coeff = m/(n + 1/indice_repartition_);
-                        coeff = m/(n + Terme_repartition);
-
-                        d = map_.phi<12321>(d);
-                        vertex_position_[Vertex(d)] = coeff*vertex_position_[Vertex(d_centre)] + (1-coeff)*vertex_position_[Vertex(d_bord)];
-
-                    }
-                }
-                std::cout<<"plus"<<std::endl;
-                cgogn::rendering::update_vbo(vertex_position_, vbo_pos_);
-                volume_drawer_->update_face<Vec3>(map_, vertex_position_);
-                volume_drawer_->update_edge<Vec3>(map_, vertex_position_);
-                topo_drawer_->update<Vec3>(map_, vertex_position_);
-                render_->init_primitives<Vec3>(map_, cgogn::rendering::POINTS);
-            }*/
             break;
         }
 		case Qt::Key_E:
@@ -452,11 +426,15 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
             nb_appuis_++;
 
 
+            //
+            // Ajout des vertices de la subdivision
+            //
+
             for(Dart d : volume_control_)
             {
                 Dart v = map_.cut_edge(Edge(d)).dart;
                 nouv_vertex.push_back(v);
-                vertex_position_[Vertex(v)] = (vertex_position_[Vertex(map_.phi1(v))]*(1 - MASK_SUBDIV_RAY) + vertex_position_[Vertex(map_.phi_1(v))]*MASK_SUBDIV_RAY);
+                //vertex_position_[Vertex(v)] = (vertex_position_[Vertex(map_.phi1(v))]*(1 - MASK_SUBDIV_RAY) + vertex_position_[Vertex(map_.phi_1(v))]*MASK_SUBDIV_RAY);
             }
 
             // dernière arti
@@ -467,10 +445,14 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
                 Dart dv = v.dart;
                 nouv_vertex.push_back(dv);
 
-                vertex_position_[v] = (vertex_position_[Vertex(map_.phi_1(dv))]*(1 - MASK_SUBDIV_RAY) + vertex_position_[Vertex(map_.phi1(dv))]*MASK_SUBDIV_RAY);
+                //vertex_position_[v] = (vertex_position_[Vertex(map_.phi_1(dv))]*(1 - MASK_SUBDIV_RAY) + vertex_position_[Vertex(map_.phi1(dv))]*MASK_SUBDIV_RAY);
 
             }
 
+
+            //
+            // Ajout des arêtes de la subdivision à l'aide des vertices rajouté à l'étape précédente
+            //
 
             for(Dart d : volume_control_)
             {
@@ -510,12 +492,16 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
 
 
 
+            //
+            // Ajout des faces de la subdivision à l'aide des arêtes rajouté à l'étape précédente
+            //
 
             for(Dart d : volume_control_)
             {
                 //
                 // version avec les indices (incomplète)
                 //
+
                 /*
                 std::vector<Edge> face_int;
 
@@ -554,7 +540,7 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
 
             }
 
-            ComputeNewCoordinates();
+            ComputeNewCoordinates(); // Calcul des coordonées des vertices ajouté
 
             map_.check_map_integrity();
 
@@ -619,7 +605,7 @@ void Viewer::init()
     cgogn::rendering::update_vbo(vertex_position_, vbo_pos_);
 
     render_ = new cgogn::rendering::MapRender();
-    render_->init_primitives<Vec3>(map_, cgogn::rendering::POINTS);
+    render_->init_primitives(map_, cgogn::rendering::POINTS);
 
     topo_drawer_ =  new cgogn::rendering::TopoDrawer();
     topo_drawer_rend_ = topo_drawer_->generate_renderer();

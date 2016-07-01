@@ -34,6 +34,8 @@ set(HEADER_FILES
         branch.h
         config.h
         window.h
+        coucheconcentrique.h
+        viewer.h
 
 )
 
@@ -41,6 +43,8 @@ set(SOURCE_FILES
 	main.cpp
         branch.cpp
         window.cpp
+        coucheconcentrique.cpp
+        viewer.cpp
 )
 
 add_executable(${PROJECT_NAME} ${HEADER_FILES} ${SOURCE_FILES})
@@ -67,9 +71,9 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 
 target_link_libraries(${PROJECT_NAME}
-	${CGOGN_PATH}/../CGoGN_2-build/lib/libcgogn_core.so
-	${CGOGN_PATH}/../CGoGN_2-build/lib/libcgogn_rendering.so
-	${CGOGN_PATH}/../CGoGN_2-build/lib/libcgogn_io.so
+        ${CGOGN_PATH}/../CGoGN_2-build/lib/libcgogn_core.so
+        ${CGOGN_PATH}/../CGoGN_2-build/lib/libcgogn_rendering.so
+        ${CGOGN_PATH}/../CGoGN_2-build/lib/libcgogn_io.so
 	${CGOGN_PATH}/../CGoGN_2-build/lib/libQOGLViewer.so
 	Qt5::Widgets
 )

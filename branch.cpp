@@ -424,15 +424,15 @@ void Branch::SubdiBranch(const double& seuil)
             if(courbure_[0] > seuil && offset == 0)
             {
                 // Segment [AB] que l'on veut détruire par subdivision
-                AB = articulations_[1].head<3>() -articulations_[0].head<3>();
+                AB = articulations_[1].head<3>() - articulations_[0].head<3>();
 
                 // Calcul de la tangente arrivant sur A, que l'on normalise car rapport à la norme de [AB] pour quelle soit du meme ordre de grandeur
-                AA = articulations_[0].head<3>() -articulation_externe_begin_.head<3>();
+                AA = articulations_[0].head<3>() - articulation_externe_begin_.head<3>();
                 AA.normalize();
                 AA = AA*AB.norm();
 
                 // Calcul de la tangente arrivant sur B, que l'on normalise car rapport à la norme de [AB] pour quelle soit du meme ordre de grandeur
-                BB = articulations_[1].head<3>() -articulations_[2].head<3>();
+                BB = articulations_[1].head<3>() - articulations_[2].head<3>();
                 BB.normalize();
                 BB = BB*AB.norm();
 

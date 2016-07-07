@@ -453,9 +453,9 @@ void Viewer::InterpolationConcentrique()
         for(int i = 0; i < TYPE_PRIMITIVE; i++)
         {
 
-            Dart d = map_.phi<211>(volume_control_[volume_control_.size()-TYPE_PRIMITIVE+i]); // nous place sur un vertex de bord, de la dernière face
+            Dart d = map_.phi<211>(volume_control_[volume_control_.size() - TYPE_PRIMITIVE + i]); // nous place sur un vertex de bord, de la dernière face
             Dart d_bord = d; // On se situe maintenant sur le bord d'où cette affectation
-            Dart d_centre = d; // le recalculer dans la boucle peut être inutile pour cette dernière face vu que ce serq toujours le même Vertex
+            Dart d_centre = d; // le recalculer dans la boucle peut être inutile pour cette dernière face vu que ce sera toujours le même Vertex
 
             // Objectif => trouver le centre
             for(int k = 0; k < nb_appuis_; k++)
@@ -475,7 +475,6 @@ void Viewer::InterpolationConcentrique()
                 double n = double(nb_appuis_ + 1);
 
                 coeff = m/(n + Terme_repartition); // poid qu'on associera à un bout du segment (point commun à tt les volumes de l'articulation => centre)
-
 
                 d = map_.phi<1213121>(d); // déplacement sur chaque nouveau volume ajouté par subdivision concentrique
                 vertex_position_[Vertex(d)] = coeff*vertex_position_[Vertex(d_centre)] + (1-coeff)*vertex_position_[Vertex(d_bord)];
@@ -509,11 +508,70 @@ void Viewer::UpdateCoordinates()
     // Cette méthode servira à recalculer les positions des points ajouté par subdivision Utheta
     // On y accèdera facilement grâce aux coucheconcentrique.ind_volumes[]
     // On stockera pas dans chaque couche un attribut d_opp puisqu'on utilisera coucheconcentrique.ind_volumes[0] de la couche suivante
+
+
+    //
+    // Tous les volumes sauf le dernier
+
+    for(unsigned int i = 0; i < subdivised_volume_control_.size(); i++)
+    {
+        CoucheConcentrique couche_courante = subdivised_volume_control_[i];
+
+        Dart extremite_gauche = couche_courante.indic_volumes_[0];
+
+        Dart extremite_droite;
+        if(((i)%(TYPE_PRIMITIVE*(nb_appuis_ + 1))) + (nb_appuis_ + 1) > ((nb_appuis_ + 1)*TYPE_PRIMITIVE) - 1) // gros doute pour le "- 1"
+            extremite_droite = subdivised_volume_control_[i + nb_appuis_ + 1 - TYPE_PRIMITIVE*(nb_appuis_ + 1) ].indic_volumes_[0];
+        else
+            extremite_droite = subdivised_volume_control_[i + nb_appuis_ + 1].indic_volumes_[0]; // penser à la seg. fault pour le dernier volume
+
+
+        for(std::vector<Dart>::iterator it = couche_courante.indic_volumes_.begin(); it < couche_courante.indic_volumes_.end(); ++it)
+        {
+            int index = it - (couche_courante.indic_volumes_.begin());
+            if(index > 0)
+            {
+                double coeff = double(index)/double(couche_courante.indic_volumes_.size());
+                vertex_position_[Vertex(*it)] = (coeff)*vertex_position_[Vertex(extremite_droite)] + (1-coeff)*vertex_position_[Vertex(extremite_gauche)];
+
+            }
+        }
+    }
+
+
+    //
+    // gérer le dernier volume
+
+    for(unsigned int i = 0; i < TYPE_PRIMITIVE*(nb_appuis_ + 1); i++)
+    {
+
+        CoucheConcentrique couche_courante = subdivised_volume_control_[subdivised_volume_control_.size() - TYPE_PRIMITIVE*(nb_appuis_ + 1) + i];
+
+        Dart extremite_gauche = map_.phi<211>(couche_courante.indic_volumes_[0]);
+
+        Dart extremite_droite;
+        if((i + (nb_appuis_ + 1)) > ((nb_appuis_ + 1)*TYPE_PRIMITIVE) - 1)
+            extremite_droite = map_.phi<211>(subdivised_volume_control_[subdivised_volume_control_.size() - 2*(nb_appuis_ + 1)*TYPE_PRIMITIVE + i + nb_appuis_ + 1 ].indic_volumes_[0]);
+        else
+            extremite_droite = map_.phi<211>(subdivised_volume_control_[subdivised_volume_control_.size() - (nb_appuis_ + 1)*TYPE_PRIMITIVE + i + nb_appuis_ + 1].indic_volumes_[0]); // penser à la seg. fault pour le dernier volume
+
+
+        for(std::vector<Dart>::iterator it = couche_courante.indic_volumes_.begin(); it < couche_courante.indic_volumes_.end(); ++it)
+        {
+
+            int index = it - (couche_courante.indic_volumes_.begin());
+            if(index > 0)
+            {
+                double coeff = double(index)/double(couche_courante.indic_volumes_.size());
+                vertex_position_[Vertex(map_.phi<211>(*it))] = (coeff)*vertex_position_[Vertex(extremite_droite)] + (1-coeff)*vertex_position_[Vertex(extremite_gauche)];
+
+            }
+        }
+    }
 }
 
 void Viewer::SubdivisionCouche(const unsigned int& Nb_subdiv) // mettre un paramètre pourrait nous indiquer de combien subdiviser => boucle for{} pour la subdivision (2^N * Nb_subdiv)
 {
-
     //
     //
     // Creation des sommets
@@ -528,77 +586,41 @@ void Viewer::SubdivisionCouche(const unsigned int& Nb_subdiv) // mettre un param
     unsigned int j = 0;
     for(CoucheConcentrique couche_courante : subdivised_volume_control_)
     {
-        /*
-        if(couche_courante.etage_ == 0 && Nb_subdiv > 0) // mettre condition && (déjà une subdiv)
-        {
-            for(unsigned int i = 0; i < Nb_subdiv; i++)
-            {
-
-                //
-                // Localisation sur la couche => faire le tri des cas exterieur et inferieur
-
-                Dart d_courant1, d_courant2, d_courant3, d_courant4, d1, d2, d3, d4;
-                d_courant1 = couche_courante.indic_volumes_[i];
-                d_courant2 = map_.phi<121>(d_courant1);
-                d_courant3 = map_.phi<121>(d_courant2);
-                d_courant4 = map_.phi<121>(d_courant3);
-                d1 = map_.phi_1(d_courant1);
-                d2 = map_.phi<12>(d_courant1);
-                d3 = map_.phi<112>(d2);
-                d4 = map_.phi<112>(d3);
-
-
-                //
-                // Ajout des points sur l'arête à subdiviser
-
-                Vertex v1, v2, v3, v4;
-                v1 = map_.cut_edge(Edge(d1)); // v1 à ajouter ensuite à notre indic_volume
-                v2 = map_.cut_edge(Edge(d2));
-                v3 = map_.cut_edge(Edge(d3));
-                v4 = map_.cut_edge(Edge(d4));
-
-                //
-                // Calcul des coordonées de ces points (pas nécessaire si l'on recycle ceux d'une couche supérieure)
-
-                vertex_position_[v1] = vertex_position_[Vertex(d_courant1)]*1/2 + vertex_position_[Vertex(d1)]*1/2;
-                vertex_position_[v2] = vertex_position_[Vertex(d_courant2)]*1/2 + vertex_position_[Vertex(d2)]*1/2;
-                vertex_position_[v3] = vertex_position_[Vertex(d_courant3)]*1/2 + vertex_position_[Vertex(d3)]*1/2;
-                vertex_position_[v4] = vertex_position_[Vertex(d_courant4)]*1/2 + vertex_position_[Vertex(d4)]*1/2;
-
-                //
-                // Construction des arêtes
-
-
-                Edge e1, e2, e3, e4;
-                e1 = map_.cut_face(v1.dart, map_.phi<21>(v2.dart)); // pour que les deux darts soient d'une même face
-                e2 = map_.cut_face(v2.dart, map_.phi<21>(v3.dart));
-                e3 = map_.cut_face(v3.dart, map_.phi<21>(v4.dart));
-                e4 = map_.cut_face(v4.dart, map_.phi<21>(v1.dart));
-
-                //
-                // Construction de la face
-
-                Face f = map_.cut_volume({map_.phi_1(v1.dart),map_.phi_1(v2.dart),map_.phi_1(v3.dart),map_.phi_1(v4.dart)});
-
-                //
-                // Stockage du dart ajouté (il va représenter le volume ajouté)
-
-                couche_courante.indic_volumes_.insert(couche_courante.indic_volumes_.begin() + i + 1, map_.phi2(map_.phi_1(v1.dart)));
-                break;
-            }
-        }
-        break;*/
 
         //
         // Calcul du nombre de volume que l'on doit avoir à la fin
 
         int Volumes_init = (couche_courante.indic_volumes_.size()-1);
 
-        int Nb_vol;
+        // variable numérotant les couches du centre vers le bord
+        double diff = nb_appuis_ - couche_courante.etage_;
+
+        // La fonction en o(2^N) => ici N^2
+        double num;
+
+        if(couche_courante.etage_ > 0)
+            num = diff + 1.0;
+        else
+            num = (diff - 1) + 1.0;
+
+        int Nb_vol = pow(2, int(log2(num)) + 1 ) - 1;
+
+        if(Nb_vol == 0)
+            std::cout<< "num est pas bon car Nb_vol ne doit janais valoir 0 : " << num << std::endl;
+
+        //std::cout << "Nombre courant : " << Nb_vol << std::endl;
+
+
+/*
         if( couche_courante.etage_ > 0)
             Nb_vol = pow(2, nb_appuis_ - couche_courante.etage_ + 1 )*Nb_subdiv - 1 ;
         else
             Nb_vol = pow(2,nb_appuis_ )*Nb_subdiv - 1; // en effet, cette arête doit être coupée autant de fois que sa précédente du point de vue concentrique
+
+*/
+
+
+
 
         //
         // Création de tous les sommets
@@ -613,7 +635,6 @@ void Viewer::SubdivisionCouche(const unsigned int& Nb_subdiv) // mettre un param
             double ind = double(i);
             double max = double(Nb_vol + 1);
             double coeff = ind/max;
-            //std::cout << "le coeff " << coeff << std::endl;
 
             // Creation du point
             Vertex v = map_.cut_edge(Edge(d_opp));
@@ -623,7 +644,6 @@ void Viewer::SubdivisionCouche(const unsigned int& Nb_subdiv) // mettre un param
             // Calcul des coordonées du point => interpolation linéaire
             vertex_position_[v] = vertex_position_[Vertex(d_courant)]*(1-coeff) + vertex_position_[Vertex(d_opp)]*coeff;
 
-            //couche_courante.indic_volumes_.insert(couche_courante.indic_volumes_.begin() + i + 1, map_.phi2(map_.phi_1(v1.dart)));
         }
         subdivised_volume_control_[j] = couche_courante;
         j++;
@@ -644,16 +664,32 @@ void Viewer::SubdivisionCouche(const unsigned int& Nb_subdiv) // mettre un param
         //
         // Calcul du nombre de volume que l'on doit avoir à la fin
 
-        int Nb_vol;
+        // variable numérotant les couches du centre vers le bord
+        double diff = nb_appuis_ - couche_actu.etage_;
+
+        // La fonction en o(2^N) => ici N^2
+        double num = 0.5;
+
+        if(couche_actu.etage_ > 0)
+            num = diff + 1.0;
+        else
+            num = (diff - 1) + 1.0;
+
+        int Nb_vol = pow(2, int(log2(num) + 1))*Nb_subdiv - 1;
+
+        if(Nb_vol == 0)
+            std::cout<< "num est pas bon car Nb_vol ne doit janais valoir 0 : " << num << std::endl;
+
+/*
+        //int Nb_vol;
         if( couche_actu.etage_ > 0)
             Nb_vol = pow(2, nb_appuis_ - couche_actu.etage_  + 1)*Nb_subdiv - 1;
         else
             Nb_vol = pow(2,nb_appuis_ )*Nb_subdiv - 1; // en effet, cette arête doit être coupée autant de fois que sa précédente du point de vue concentrique
+*/
 
         //
         // Création de tous les sommets
-
-
 
         for(unsigned int i = 1; i < Nb_vol + 1; i++)
         {
@@ -661,7 +697,6 @@ void Viewer::SubdivisionCouche(const unsigned int& Nb_subdiv) // mettre un param
             double ind = double(i);
             double max = double(Nb_vol + 1);
             double coeff = ind/max;
-            //std::cout << "le coeff " << coeff << std::endl;
 
             // Creation du point
             Vertex v = map_.cut_edge(Edge(d_opp));
@@ -701,6 +736,11 @@ void Viewer::SubdivisionCouche(const unsigned int& Nb_subdiv) // mettre un param
             // Condition sur l'articulation => être en bout de branche n'est pas intéressant => cas à traiter à part pour les arêtes de fin => on est sur de la valider => à supprimer
             CoucheConcentrique Couche_suivante_inferieure = *(it + (nb_appuis_ + 1)*TYPE_PRIMITIVE); //subdivised_volume_control_[index + (nb_appuis_ + 1)*TYPE_PRIMITIVE];
 
+            int ratio = (*it).indic_volumes_.size()/Couche_suivante_interieure.indic_volumes_.size();
+
+
+
+
             //
             //Arête e1
 
@@ -712,36 +752,12 @@ void Viewer::SubdivisionCouche(const unsigned int& Nb_subdiv) // mettre un param
                 if((*it).etage_ == 0)
                     d1 = (*it).indic_volumes_[i];
                 else
-                    d1 = (*it).indic_volumes_[2*i]; // *2 à changer dans un future proche => 2 - 1 indique nombre de point qu'il faut sauter (ne pas relier)
+                    d1 = (*it).indic_volumes_[ratio*i]; // *2 à changer dans un future proche => 2 - 1 indique nombre de point qu'il faut sauter (ne pas relier)
 
                 Dart d2 = map_.phi<2321>(Couche_suivante_interieure.indic_volumes_[i]); // Pas de 2 * i car les dart stocké sur cette couche correspondent à ceux qu'il faut utiliser et pas aux autre de ce même segment
 
                 Edge e1; // On relie tout les sommets(darts) de couche suivante interieur
                 e1 = map_.cut_face(d1,d2);
-
-                /*
-                if((*it).etage_ == 0)
-                    e1 = map_.cut_face(d1,d2);// Couche 0 et couche 1 ont le même Nb de sommets
-                else
-                {
-                    // Il y a deux fois moins de sommets d'une couche à l'autre => pas toujours vrai et le modulo sera à changer
-                    if( (i%2) == 0)
-                        e1 = map_.cut_face(d1,d2);
-                }*/
-
-                /*
-                //
-                // On va gérer les derniers volumes concentriques
-
-                if((*it).etage_ == nb_appuis_)
-                {
-                    e3 = map_.cut_face(d2, map_.phi<21>(d3));
-                    d2 = map_.phi_1(map_.phi2(map_.phi_1(d2)));
-                }
-                else
-                {
-                    d2 = map_.phi_1(d2); // car les arêtes sur cette face ne sont pas encore tracé
-                }*/
             }
 
 
@@ -783,11 +799,11 @@ void Viewer::SubdivisionCouche(const unsigned int& Nb_subdiv) // mettre un param
     {
         // On se place sur le bon volume de subdivision concentrique
         CoucheConcentrique couche_actu = subdivised_volume_control_[subdivised_volume_control_.size() - TYPE_PRIMITIVE*(nb_appuis_ + 1) + k];
+        CoucheConcentrique couche_suivante = couche_actu; // Juste pour déclarer
 
 
-
-        std::cout << "taille des derniers volumes " << couche_actu.indic_volumes_.size() << std::endl;
-
+        if(couche_actu.etage_ > 0 && couche_actu.etage_ < nb_appuis_)
+            couche_suivante = subdivised_volume_control_[subdivised_volume_control_.size() - TYPE_PRIMITIVE*(nb_appuis_ + 1) + k + 1]; // Véritable affectation
 
         if(couche_actu.etage_ == 0)
         {
@@ -823,23 +839,26 @@ void Viewer::SubdivisionCouche(const unsigned int& Nb_subdiv) // mettre un param
             Dart d3 = map_.phi<112>(d2);
             Dart d4 = map_.phi<112>(d3);
 
+            int ratio = couche_actu.indic_volumes_.size()/couche_suivante.indic_volumes_.size();
+
+
             for(unsigned int i = 1; i < couche_actu.indic_volumes_.size(); i++)
             {
                 Dart d1 = couche_actu.indic_volumes_[i];
 
                 // Gestion arête e1
-                if(i%2 == 0)
+                if(i%ratio == 0)
                     Edge e1 = map_.cut_face(d1,map_.phi<21>(d2));
 
                 // Gestion arête e2
                 Edge e2 = map_.cut_face(d4, map_.phi<21>(d1));
 
                 // Gestion arête e4
-                if(i%2 == 0)
+                if(i%ratio == 0)
                     Edge e4 = map_.cut_face(d3, map_.phi<21>(d4));
 
                 // Déplacement des darts
-                if(i%2 == 0)
+                if(i%ratio == 0)
                 {
                     d2 = map_.phi_1(d2);
                     d3 = map_.phi_1(map_.phi2(map_.phi_1(d3)));
@@ -865,8 +884,6 @@ void Viewer::SubdivisionCouche(const unsigned int& Nb_subdiv) // mettre un param
                 d4 = map_.phi_1(map_.phi2(map_.phi_1(d4)));
             }
         }
-
-
     }
 
 
@@ -878,27 +895,49 @@ void Viewer::SubdivisionCouche(const unsigned int& Nb_subdiv) // mettre un param
     //
 
 
-    for(CoucheConcentrique couche_courante : subdivised_volume_control_)
+    for( std::vector<CoucheConcentrique>::iterator it_vol = subdivised_volume_control_.begin(); it_vol < subdivised_volume_control_.end(); ++it_vol)
     {
+        CoucheConcentrique couche_courante = *it_vol;
+
         if(couche_courante.etage_ < nb_appuis_)
         {
-            std::cout << "la taille est " << couche_courante.indic_volumes_.size() << std::endl;
+            CoucheConcentrique couche_suivante = *(it_vol + 1); // Aucun risque d'être sur un nouveau quartier
+
             // avec iterateur
-            for(std::vector<Dart>::iterator it = couche_courante.indic_volumes_.begin() + 1 ; it < couche_courante.indic_volumes_.end(); ++it)
+            for(std::vector<Dart>::iterator it_dart = couche_courante.indic_volumes_.begin() + 1 ; it_dart < couche_courante.indic_volumes_.end(); ++it_dart)
             {
+                bool check_last_binary_dart = true;
+
                 //en choisir qu'un sur 2
                 Dart d_courant;
                 if(couche_courante.etage_ > 0)
-                    d_courant = map_.phi_1(*it);// Le nb de fois qu'il faudra pour atteindre le bon point
+                {
+                    if(couche_suivante.indic_volumes_.size() < couche_courante.indic_volumes_.size())
+                    {
+                        // lorsqu'on est sur le dernier dart, il ne faut rien faire dans ce cas là =>pas créer de volume
+
+                        it_dart++; // voici le correctif
+                        if(it_dart < couche_courante.indic_volumes_.end())
+                            d_courant = *it_dart; // Le nb de fois qu'il faudra pour atteindre le bon point => pb, car on refait la même chose à l'itération suivant
+                        else
+                            check_last_binary_dart = false;
+
+                    }
+                    else
+                        d_courant = *it_dart; // ici c'est 0 fois car on a autant de point d'une couche à l'autre
+                }
                 else
-                    d_courant = *it;
+                    d_courant = *it_dart; // ok
 
-                Dart d1 = map_.phi<21>(d_courant);
-                Dart d4 = map_.phi<121>(d1);
-                Dart d3 = map_.phi<121>(d4);
-                Dart d2 = map_.phi<121>(d3);
+                if(check_last_binary_dart)
+                {
+                    Dart d1 = map_.phi<21>(d_courant);
+                    Dart d4 = map_.phi<121>(d1);
+                    Dart d3 = map_.phi<121>(d4);
+                    Dart d2 = map_.phi<121>(d3);
 
-                Face f = map_.cut_volume({d4, d3, d2, d1});
+                    Face f = map_.cut_volume({d4, d3, d2, d1});
+                }
             }
         }
     }
@@ -944,9 +983,17 @@ Viewer::Viewer() :
 void Viewer::keyPressEvent(QKeyEvent *ev)
 {
     switch (ev->key()) {
+        case Qt::Key_Z:
+        {
+            UpdateCoordinates();
+            break;
+        }
         case Qt::Key_L:
         {
             SubdivisionCouche(1);
+            unsigned int volume_count = 0;
+            map_.foreach_cell([&] (Volume v){ volume_count++; }); // affichage du nombre de volumes
+            std::cout << " Il y a " << volume_count << " Volumes après subdiv Utheta améliorée" << std::endl;
             break;
 
         }
@@ -954,14 +1001,15 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
         {
             indice_repartition_--;
             InterpolationConcentrique(); // Calcul des coordonées de chaque points ajouté par "C"
-            std::cout<<"minus"<<std::endl;
+            //std::cout<<"minus"<<std::endl;
             break;
         }
         case Qt::Key_Plus:
         {
             indice_repartition_++;
             InterpolationConcentrique(); // Calcul des coordonées de chaque points ajouté par "C"
-            std::cout<<"plus"<<std::endl;
+            //UpdateCoordinates();
+            //std::cout<<"plus"<<std::endl;
             break;
         }
         case Qt::Key_E:
@@ -1101,8 +1149,9 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
 
             }
 
-            InterpolationConcentrique(); // Calcul des coordonées des vertices ajouté
+
             GetCouchesConcentriques();
+            InterpolationConcentrique(); // Calcul des coordonées des vertices ajouté
             //SubdivisionCouche(1);
 
 

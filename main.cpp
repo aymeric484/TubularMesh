@@ -32,7 +32,11 @@ int main(int argc, char** argv)
 	QApplication application(argc, argv);
 	qoglviewer::init_ogl_context();
 
-    Branch branche("../../TubularMesh/multibranch");
+    //Branch branche("../../TubularMesh/multibranch");
+    Squelette squelette("../../TubularMesh/multibranch");
+
+    Branch branche = squelette.branches_[0];
+
     //Branch branche("../../TubularMesh/multibranch_cave");
     //Branch branche;
 

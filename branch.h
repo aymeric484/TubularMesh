@@ -20,7 +20,7 @@ class Branch
 
 public:
 
-    Branch();   //constructor
+    Branch(int&);   //constructor
     // Branch(squelette S, std::vector<int> ind); devrait nous permettre l'extraction des branches d'un squelette grace aux indices des articulations concernees
     Branch(const std::string&);
 
@@ -34,6 +34,7 @@ public:
 
     Vec4 articulation_externe_begin_; // articulations n'appartenant pas a la branche, au bout de la branche
     Vec4 articulation_externe_end_;
+    unsigned int branch_size_;
 
 private:
 
@@ -51,7 +52,7 @@ private:
     std::vector<double> courbure_; // pourra être éventuelement supprimée => à faire aussi dans ComputeMatrixFromBranch et subdibranch
     std::vector<double> courbure_max_;
 
-    unsigned int branch_size_;
+
 
 };
 

@@ -34,9 +34,10 @@
 #include <cgogn/geometry/algos/normal.h>
 #include <cgogn/geometry/algos/filtering.h>
 
-#include "branch.h"
+//#include "branch.h"
 #include "window.h"
 #include "coucheconcentrique.h"
+#include "squelette.h"
 
 
 

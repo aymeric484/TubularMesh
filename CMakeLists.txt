@@ -36,7 +36,8 @@ set(HEADER_FILES
         window.h
         coucheconcentrique.h
         viewer.h
-
+        intersection.h
+        squelette.h
 )
 
 set(SOURCE_FILES
@@ -45,6 +46,8 @@ set(SOURCE_FILES
         window.cpp
         coucheconcentrique.cpp
         viewer.cpp
+        intersection.cpp
+        squelette.cpp
 )
 
 add_executable(${PROJECT_NAME} ${HEADER_FILES} ${SOURCE_FILES})

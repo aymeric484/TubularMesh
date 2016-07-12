@@ -21,7 +21,7 @@ void Viewer::MakeFromBranch(const std::vector<Vec3>& positions, const unsigned i
             // coudre les faces triangulaires des prismes(3d)
             Dart v1 = map_.phi2(map_.phi1(map_.phi1(map_.phi2(volume_control_[(m-1)*primitives + k]))));
             Dart v2 = volume_control_[m*primitives + k];
-            mbuild.sew_volumes(Volume(v1), Volume(v2));
+            mbuild.sew_volumes(v1, v2);
 
             // coudre les faces rectangulaires des prismes(3d)
             Dart v3 = map_.phi2(map_.phi1(volume_control_[(m-1)*primitives + k]));
@@ -30,7 +30,7 @@ void Viewer::MakeFromBranch(const std::vector<Vec3>& positions, const unsigned i
                 v4 = map_.phi2(volume_control_[(m-1)*primitives + k + 1]);
             else
                 v4 = map_.phi2(volume_control_[(m-1)*primitives]);
-            mbuild.sew_volumes(Volume(v3), Volume(v4));
+            mbuild.sew_volumes(v3,v4);
         }
     }
 
@@ -44,7 +44,7 @@ void Viewer::MakeFromBranch(const std::vector<Vec3>& positions, const unsigned i
             v4 = map_.phi2(volume_control_[(nb_articulation-2)*primitives + k + 1]);
         else
             v4 = map_.phi2(volume_control_[(nb_articulation-2)*primitives]);
-        mbuild.sew_volumes(Volume(v3), Volume(v4));
+        mbuild.sew_volumes(v3,v4);
     }
 
     mbuild.close_map(); //reboucle les volumes en bord de map
@@ -603,7 +603,7 @@ void Viewer::SubdivisionCouche(const unsigned int& Nb_subdiv) // mettre un param
         else
             num = (diff - 1) + 1.0;
 
-        int Nb_vol = pow(2, int(log2(num)) + 1 ) - 1;
+        int Nb_vol = pow(2, int(log2(num)) + 1 )*Nb_subdiv - 1;
 
         if(Nb_vol == 0)
             std::cout<< "num est pas bon car Nb_vol ne doit janais valoir 0 : " << num << std::endl;
@@ -990,7 +990,7 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
         }
         case Qt::Key_L:
         {
-            SubdivisionCouche(1);
+            SubdivisionCouche(3);
             unsigned int volume_count = 0;
             map_.foreach_cell([&] (Volume v){ volume_count++; }); // affichage du nombre de volumes
             std::cout << " Il y a " << volume_count << " Volumes après subdiv Utheta améliorée" << std::endl;

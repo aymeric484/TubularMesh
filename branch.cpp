@@ -1,6 +1,6 @@
 #include "branch.h"
 
-Branch::Branch()
+Branch::Branch(int& i)
 {
 
     // fixed
@@ -231,7 +231,7 @@ Branch::Branch()
     articulations_.push_back(V42);
     articulations_.push_back(V43);*/
 
-    branch_size_= articulations_.size();
+    //branch_size_= articulations_.size();
 
 }
 

@@ -33,17 +33,18 @@ int main(int argc, char** argv)
 	qoglviewer::init_ogl_context();
 
     //Branch branche("../../TubularMesh/multibranch");
-    Squelette squelette("../../TubularMesh/multibranch");
+    Squelette squelette("../../TubularMesh/intersect3");
+
 
     Branch branche = squelette.branches_[0];
 
     //Branch branche("../../TubularMesh/multibranch_cave");
     //Branch branche;
 
-    branche.BranchSimplify(DISTANCE_MIN);
+    //branche.BranchSimplify(DISTANCE_MIN);
     //branche.SubdiBranch( COURBURE_MAX );
-    branche.CreateCircleCoordinates(TYPE_PRIMITIVE);
-    branche.SubdiDirectionT(COURBURE_MAX, TYPE_PRIMITIVE);
+    //branche.CreateCircleCoordinates(TYPE_PRIMITIVE);
+    //branche.SubdiDirectionT(COURBURE_MAX, TYPE_PsRIMITIVE);
 
     /*
     Window fenetre;
@@ -54,7 +55,7 @@ int main(int argc, char** argv)
     Viewer viewer;
 	viewer.setWindowTitle("simpleViewer");
 
-    viewer.MakeFromBranch(branche.pos_vertices_, TYPE_PRIMITIVE);
+    viewer.MakeFromSkeleton(branche.pos_vertices_, TYPE_PRIMITIVE);
 
     viewer.move(105,68);
     viewer.show();

@@ -233,6 +233,9 @@ Branch::Branch(int& i)
 
     //branch_size_= articulations_.size();
 
+    branch_size_= 0;
+    std::cout << "through " << std::endl;
+
 }
 
 Branch::Branch(const std::string& filename)

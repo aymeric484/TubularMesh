@@ -27,19 +27,30 @@ Squelette::Squelette(const std::string& filename)
 
         // On verifie si l'on commence une nouvelle branche
         std::size_t pos = line.find("--") ;
+
+
+
         if(pos != std::string::npos)
         {
 
-            // On termine les affectations pour la branche_courante
-            branche_courante.articulation_externe_end_ = branche_courante.articulations_.back();
-            branche_courante.articulations_.pop_back();
-            branche_courante.branch_size_ = branche_courante.articulations_.size();
-            branches_.push_back(branche_courante);
-            branche_courante.articulations_.clear(); // on peut recommencer une nouvelle branche
+            // Si on avait une branche ... alors libérer la variable
+            if(branche_courante.branch_size_ > 0)
+            {
+                // On termine les affectations pour la branche_courante
+                branche_courante.articulation_externe_end_ = branche_courante.articulations_.back();
+                branche_courante.articulations_.pop_back();
+                branche_courante.branch_size_ = branche_courante.articulations_.size();
+                branches_.push_back(branche_courante);
+                branche_courante.articulations_.clear(); // on peut recommencer une nouvelle branche
+                branche_courante.branch_size_ = 0;
+
+            }
+
 
             // On prépare une nouvelle branche
-            char* MemberLeft;
-            char* MemberRight;
+            char MemberLeft[line.size()];
+            char MemberRight[line.size()];
+
 
             std::size_t length1 = line.copy(MemberLeft, pos, 0);
             std::size_t length2 = line.copy(MemberRight, line.size() - (pos + 2), pos + 2);
@@ -50,7 +61,7 @@ Squelette::Squelette(const std::string& filename)
             count = 0;
 
             fp.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // decalage à la ligne suivante
-            std::cout<< "hidden " <<std::endl;
+            //std::cout<< "hidden " <<std::endl;
 
         }
         else
@@ -63,9 +74,15 @@ Squelette::Squelette(const std::string& filename)
             if(word_pos > 3)
             {
                 if(count == 0)
+                {
                     branche_courante.articulation_externe_begin_ = arti_inter; // on gère le point externe => premier point qui n'a pas de face associé
+                }
                 else
+                {
                     branche_courante.articulations_.push_back(arti_inter);
+                    //std::cout<< " x =  " << arti_inter[0] << " y =  " << arti_inter[1] << " z =  " << arti_inter[2] << " r =  " << arti_inter[3] << std::endl;
+                    branche_courante.branch_size_ = branche_courante.articulations_.size();
+                }
 
                 count++;
                 word_pos = 0;
@@ -81,6 +98,7 @@ Squelette::Squelette(const std::string& filename)
                 branche_courante.articulation_externe_end_ = branche_courante.articulations_.back();
                 branche_courante.articulations_.pop_back();
                 branche_courante.branch_size_ = branche_courante.articulations_.size();
+
                 branches_.push_back(branche_courante);
                 branche_courante.articulations_.clear(); // on ne recommencera pas de nouvelle branche
 
@@ -96,4 +114,110 @@ Squelette::Squelette(const std::string& filename)
     //mise à jour de la taille du tableau
     //branch_size_= articulations_.size();
 
+    //
+    // Création des coordonées de chaque branche et stockage dans le tableau pos_vertices (attribut de branche)
+    //
+
+    for(int k = 0; k < branches_.size(); k++)
+    {
+        Branch branche = branches_[k];
+        branche.BranchSimplify(DISTANCE_MIN);
+        branche.CreateCircleCoordinates(TYPE_PRIMITIVE);
+        branche.SubdiDirectionT(COURBURE_MAX, TYPE_PRIMITIVE);
+        branches_[k] = branche;
+    }
+
+
+
+    //
+    // Détection des intersections et création de leurs coordonées
+    //
+
+    int counter_end = 0;
+    bool change = false;
+
+    for(int i : ind_bout_arrive_)
+    {
+        int counter_begin = 0;
+        bool lock = true;
+        Intersection inter(i);
+
+        for(int j : ind_bout_depart_)
+        {
+
+            if(i == j)
+            {
+                if(lock == true)
+                {
+                    Branch branche_arrivee = branches_[counter_end]; // On récupère la branche du même indice de branche
+                    inter.centre_ = branche_arrivee.articulation_externe_end_; // Correspond au centre de l'intersection
+                    int taille_max = branche_arrivee.pos_vertices_.size();
+
+                    // On stocke le bout de la branche
+                    for(int n = 0; n < TYPE_PRIMITIVE; n++)
+                        inter.contours_.push_back(branche_arrivee.pos_vertices_[taille_max - TYPE_PRIMITIVE + n]);
+
+                    lock = false;
+                }
+
+                Branch branche_depart = branches_[counter_begin];
+                for(int m = 1; m < TYPE_PRIMITIVE + 1; m++)
+                    inter.contours_.push_back(branche_depart.pos_vertices_[m]);
+                change = true;
+
+            }
+
+            counter_begin++;
+
+        }
+
+        if(change == true)
+        {
+            intersections_.push_back(inter);
+            change = false;
+        }
+
+        counter_end++;
+    }
+
+    //
+    // TEST : affichage des coordonées de l'intersection
+    //
+
+    /*
+    for(Intersection intersection : intersections_)
+    {
+        for(Vec3 coord : intersection.contours_)
+           std::cout << "x = " << coord[0] << "  y = " << coord[1] << "  z = " << coord[2] << std::endl;
+    }*/
+
+
+
+    //
+    // Obtenir la connectivité => se code pourrait-il être fait ailleurs?
+    //
+
+    Intersection inter = intersections_[0];
+    inter.ComputeConnectivity();
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

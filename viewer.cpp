@@ -1,8 +1,10 @@
 #include "viewer.h"
 
-void Viewer::MakeFromBranch(const std::vector<Vec3>& positions, const unsigned int& primitives)
+void Viewer::MakeFromSkeleton(const std::vector<Vec3>& positions, const unsigned int& primitives)
 {
     MapBuilder mbuild(map_);
+
+    //mbuild.add_prism_topo();
 
     int nb_articulation = positions.size()/(primitives+1);
     int volume_count=0;

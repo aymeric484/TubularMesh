@@ -38,6 +38,7 @@ set(HEADER_FILES
         viewer.h
         intersection.h
         squelette.h
+        trianglegeo.h
 )
 
 set(SOURCE_FILES
@@ -48,6 +49,7 @@ set(SOURCE_FILES
         viewer.cpp
         intersection.cpp
         squelette.cpp
+        trianglegeo.cpp
 )
 
 add_executable(${PROJECT_NAME} ${HEADER_FILES} ${SOURCE_FILES})

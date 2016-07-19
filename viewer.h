@@ -73,7 +73,7 @@ public:
 
     virtual void keyPressEvent(QKeyEvent *);
     void mousePressEvent(QMouseEvent*);
-    void MakeFromBranch(const std::vector<Vec3>&, const unsigned int&);
+    void MakeFromSkeleton(const std::vector<Vec3>&, const unsigned int&);
 
     //void OrientationFromSkel
     virtual ~Viewer();

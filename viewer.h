@@ -11,6 +11,7 @@
 #include <QKeyEvent>
 
 #include <cgogn/core/cmap/cmap3.h>
+#include <cgogn/core/cmap/cmap2.h>
 #include <cgogn/core/basic/dart.h>
 
 #include <cgogn/io/map_import.h> // peut etre pas besoin
@@ -42,9 +43,12 @@
 
 
 using Map3 = cgogn::CMap3<cgogn::DefaultMapTraits>;
+using Map2 = cgogn::CMap2<cgogn::DefaultMapTraits>;
+
 using Vertex = typename Map3::Vertex;
 using Edge = typename Map3::Edge;
 using Face = typename Map3::Face;
+using Face2 = typename Map2::Face;
 using Volume = typename Map3::Volume;
 
 using Dart = cgogn::Dart;
@@ -56,6 +60,7 @@ using Vec4 = Eigen::Vector4d;
 template <typename T>
 using VertexAttribute = Map3::VertexAttribute<T>;
 using MapBuilder = cgogn::CMap3Builder_T<Map3::MapTraits>;
+using MapBuilder2 = cgogn::CMap2Builder_T<Map2::MapTraits>;
 
 
 class Viewer : public QOGLViewer
@@ -75,6 +80,9 @@ public:
     void mousePressEvent(QMouseEvent*);
     void MakeFromSkeleton(const std::vector<Vec3>&, const unsigned int&);
 
+    // Méthode temporaire de test
+    void MakeIntersection(std::vector<TriangleGeo>, Vec4); // Elle sera plus à inclure plus tard dans une boucle d'intersection de MakeFromSkeleton qui contiendra aussi une boucle de branche
+
     //void OrientationFromSkel
     virtual ~Viewer();
     virtual void closeEvent(QCloseEvent *e);
@@ -89,6 +97,7 @@ private:
     void SubdivisionCouche(const unsigned int&);
 
     Map3 map_;
+    Map2 map2_;
 
     std::vector<CoucheConcentrique> subdivised_volume_control_;
     std::vector<Dart> volume_control_;
@@ -96,6 +105,7 @@ private:
     VertexAttribute<Vec3> vertex_position_;
     VertexAttribute<Vec3> vertex_position2_;
     VertexAttribute<Vec3> vertex_normal_;
+
 
     cgogn::CellCache<Map3> cell_cache_prec_;
 

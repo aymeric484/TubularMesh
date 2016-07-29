@@ -32,6 +32,10 @@ public:
     Vec4 centre_;
     std::vector<TriangleGeo> faces_;
 
+    // Cette variables stocke les branches incidente, sachant que le premier terme est un bout de branche arrivant sur l'intersection
+    // Alors que tout les autres indices représenteront des début de branches quittant l'intersection
+    std::vector<int> branches_incidentes_;
+
     Intersection(int&);
 
     //
@@ -51,6 +55,10 @@ public:
     // Si dot > 0, alors on ignore le point et on passe au suivant
     // Sinon, on supprime notre triangle te on en créer 3 nouveaux reliant à chaque fois 2 points du triangle au point externe
     void ComputeConnectivity();
+    void ComputeConnectivity2();
+    void ComputeConnectivity3();
+    void ComputeConnectivity4();
+
 
 };
 

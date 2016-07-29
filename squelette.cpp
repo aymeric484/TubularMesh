@@ -157,12 +157,19 @@ Squelette::Squelette(const std::string& filename)
                     for(int n = 0; n < TYPE_PRIMITIVE; n++)
                         inter.contours_.push_back(branche_arrivee.pos_vertices_[taille_max - TYPE_PRIMITIVE + n]);
 
+                    // Mettre un autre pushback *3 pour y stocker les indices de branches dans l'ordre
+                    inter.branches_incidentes_.push_back(counter_end);
+
                     lock = false;
                 }
 
                 Branch branche_depart = branches_[counter_begin];
                 for(int m = 1; m < TYPE_PRIMITIVE + 1; m++)
                     inter.contours_.push_back(branche_depart.pos_vertices_[m]);
+
+                // Mettre un autre pushback *3 pour y stocker les indices de branches dans l'ordre
+                inter.branches_incidentes_.push_back(counter_begin);
+
                 change = true;
 
             }
@@ -197,8 +204,9 @@ Squelette::Squelette(const std::string& filename)
     // Obtenir la connectivité => se code pourrait-il être fait ailleurs?
     //
 
+    /*
     Intersection inter = intersections_[0];
-    inter.ComputeConnectivity();
+    inter.ComputeConnectivity3();*/
 }
 
 

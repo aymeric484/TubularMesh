@@ -1,10 +1,188 @@
 #include "viewer.h"
 
-void Viewer::MakeFromSkeleton(const std::vector<Vec3>& positions, const unsigned int& primitives)
+
+void Viewer::MakeIntersection(std::vector<TriangleGeo> triangles, Vec4 centre)
 {
+
+    /*
+
+    //
+    //
+    // Stratégie du polytétraèdre map_3
+    //
+    //
+
+
+
+
+    //
+    // Init
+    //
+
+    std::vector<Dart> tetra_complete; // Nous permettra un accès aux tétraèdres pour l'affectation des coordonnées
+    std::vector<Dart> tetra_open;
+
     MapBuilder mbuild(map_);
 
-    //mbuild.add_prism_topo();
+    // Création des premier tétraèdre
+    Dart d_init = mbuild.add_pyramid_topo(3);
+    Dart d1 = mbuild.add_pyramid_topo(3);
+    Dart d2 = mbuild.add_pyramid_topo(3);
+    Dart d3 = mbuild.add_pyramid_topo(3);
+
+    // Coudre ces premiers tétraèdre : On choisit le dart des tétraèdres de ne pas être sur une arête contenant le centre, mais sur la face externe non-cousue
+    mbuild.sew_volumes(map_.phi<21>(d_init), map_.phi_1(map_.phi2(d1)));
+    mbuild.sew_volumes(map_.phi<121>(d_init), map_.phi_1(map_.phi2(d2)));
+    mbuild.sew_volumes(map_.phi<21>(map_.phi_1(d_init)), map_.phi_1(map_.phi2(d3)));
+
+    // Initialisation des tableaux avec leur premiers éléments
+    tetra_complete.push_back(d_init);
+    tetra_open.push_back(d1);
+    tetra_open.push_back(d2);
+    tetra_open.push_back(d3);
+
+
+    unsigned int i = 0;
+
+
+
+    //
+    // Construction de tous les tetraèdre
+    //
+
+    while(tetra_complete.size() + tetra_open.size() + 1 < triangles.size()) // tant qu'on a pas autant de tétraèdre que de triangle
+    {
+
+        Dart side1 = mbuild.add_pyramid_topo(3);
+        Dart side2 = mbuild.add_pyramid_topo(3);
+
+        mbuild.sew_volumes(side1, tetra_open[i]);
+        mbuild.sew_volumes(side2, tetra_open[i]);
+
+        tetra_complete.push_back(tetra_open[i]);
+        tetra_open[i] = side1;
+        tetra_open.push_back(side2);
+
+
+        i++;
+    }
+
+
+    //
+    // Liaison des tétraèdre "ouverts" restant
+    //
+
+    for(int j = 0; j < tetra_open.size(); j++)
+    {
+        mbuild.sew_volumes( tetra_open[j], tetra_open[j + 1]);
+        j++;
+    }
+
+    */
+    //
+
+
+    //
+    //
+    // Stratégie polyèdre map_2
+    //
+    //
+
+    /*
+
+    //MapBuilder2 mbuild2(map_);
+
+
+    //
+    // Initialisation : création des premières face du polyèdre ou bien création de toute les face stockées dans Dart
+    //
+
+    std::vector<Dart> Faces;
+
+    for(int i = 0; i < 4; i++)
+    {
+        Faces.push_back(mbuild2.add_face_topo_parent(3));
+    }
+
+    Dart face0 = Faces[0];
+    Dart face1 = Faces[1];
+    Dart face2 = Faces[2];
+    Dart face3 = Faces[3];
+
+    mbuild2.phi2_sew(face0, map_.phi1(face1));
+    mbuild2.phi2_sew(face1, map_.phi1(face2));
+    mbuild2.phi2_sew(face2, map_.phi1(face0));
+    mbuild2.phi2_sew(face3, map_.phi_1(face0));
+    mbuild2.phi2_sew(map_.phi_1(face3), map_.phi_1(face1));
+    mbuild2.phi2_sew(map_.phi1(face3), map_.phi_1(face2));
+
+
+    //Dart d = mbuild2.add_face_topo_parent(3);
+
+    //triangle
+
+
+    //
+    // TEST : affichage d'un tétraèdre map2 && TEST : merge
+    //
+
+    mbuild2.close_map();
+
+    MapBuilder mbuild(map_);
+
+    //map_.merge(map2_);
+
+    map_.merge(map2_);
+    mbuild.close_map();
+
+    vertex_position_ = map_.add_attribute<Vec3, Vertex::ORBIT>("position");
+
+    vertex_position_[Vertex(face0)] = { 0, 0, 0 };
+    vertex_position_[Vertex(face1)] = { -1, 0, 0 };
+    vertex_position_[Vertex(face2)] = { 0, 1, 0 };
+    vertex_position_[Vertex(map_.phi1(face0))] = { -0.5, 0.5, 1 };
+
+
+
+    //
+    // Boucle de création de notre polyèdre
+    //
+
+    //
+    // Construire des faces
+
+
+    //
+    // Les coudre en phi2
+
+    //
+    // TEST : Faire une map3 à partit de la map2 => merge ==> permettra l'affichage de notre polyèdre
+    //
+
+    //
+    //
+    // Passer la map2 à generate tetraèdrisation (tetgen) méthode accessible par SCHNapps => inclure les fichier qu'il faudra
+    //
+    //
+
+
+
+
+
+
+
+    //bounding boxe et scene parameters
+    cgogn::geometry::compute_AABB(vertex_position_, bb_);
+    setSceneRadius(bb_.diag_size()/2.0);
+    Vec3 center = bb_.center();
+    setSceneCenter(qoglviewer::Vec(center[0], center[1], center[2]));
+    showEntireScene();*/
+}
+
+void Viewer::MakeFromSkeleton(const std::vector<Vec3>& positions, const unsigned int& primitives)
+{    
+    MapBuilder mbuild(map_);
+
 
     int nb_articulation = positions.size()/(primitives+1);
     int volume_count=0;
@@ -57,9 +235,9 @@ void Viewer::MakeFromSkeleton(const std::vector<Vec3>& positions, const unsigned
 
 
     //Les vertices vont être indexe automatiquement & creation d'un de leur attribut, position dans l espace 3D
-    vertex_position_ = map_.add_attribute<Vec3, Vertex::ORBIT>("position");
-    vertex_normal_ = map_.add_attribute<Vec3, Vertex::ORBIT>("normal");
 
+    vertex_normal_ = map_.add_attribute<Vec3, Vertex::ORBIT>("normal");
+    vertex_position_ = map_.add_attribute<Vec3, Vertex::ORBIT>("position");
 
     // affectation d'un point du prisme triangulaire & du point en commun aux n-prismes (n = primitive)
     for(Dart d : volume_control_)
@@ -107,7 +285,6 @@ void Viewer::MakeFromSkeleton(const std::vector<Vec3>& positions, const unsigned
     showEntireScene();
 
 }
-
 
 // Code subdivision Utheta améliorée chaotique
 
@@ -1109,6 +1286,7 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
 
             for(Dart d : volume_control_)
             {
+
                 //
                 // version avec les indices (incomplète)
                 //

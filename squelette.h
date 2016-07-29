@@ -11,7 +11,7 @@ class Squelette
 private:
 
 
-    std::vector<Intersection> intersections_;
+
 
     // Ces deux variables codent la connectivité du squelette
     // On obtiendra les extremité begin et end de ces deux variables
@@ -24,9 +24,12 @@ private:
 public:
 
     std::vector<Branch> branches_;
+    std::vector<Intersection> intersections_;
 
     // Le constructeur sera un parseur
     Squelette(const std::string&);
+
+    // Dans un deuxième temps, il extraira le squelette d'une image 3D
 
 
 };

@@ -6,7 +6,41 @@
 //
 
 
-void Viewer2::MakeIntersection(std::vector<TriangleGeo> triangles, Vec4 centre, std::vector<Vec3> sommets_intersection)
+
+void Viewer2::keyPressEvent(QKeyEvent *ev)
+{
+    switch (ev->key())
+    {
+        case Qt::Key_P:
+            phong_rendering_ = true;
+            flat_rendering_ = false;
+            break;
+        case Qt::Key_F:
+            flat_rendering_ = true;
+            phong_rendering_ = false;
+            break;
+        case Qt::Key_N:
+            normal_rendering_ = !normal_rendering_;
+            break;
+        case Qt::Key_E:
+            edge_rendering_ = !edge_rendering_;
+            break;
+        case Qt::Key_V:
+            vertices_rendering_ = !vertices_rendering_;
+            break;
+        case Qt::Key_B:
+            bb_rendering_ = !bb_rendering_;
+            break;
+        default:
+            break;
+    }
+    // enable QGLViewer keys
+    QOGLViewer::keyPressEvent(ev);
+    //update drawing
+    update();
+}
+
+void Viewer2::MakeIntersection(std::vector<TriangleGeo> triangles, std::vector<Vec3> sommets_intersection)
 {
     // TEST : Affichage d'un tétraèdre
     /*
@@ -161,8 +195,9 @@ void Viewer2::MakeIntersection(std::vector<TriangleGeo> triangles, Vec4 centre, 
     vertex_normal_ = map_.add_attribute<Vec3, Vertex2::ORBIT>("normal");
 
     // TEST : Pour vérifier que l'on est bien sur une sphère
-    /*
-    int incre = 0;
+
+
+    /*int incre = 0;
     for(TriangleGeo T : triangles)
     {
         Dart d = dart_faces[incre];
@@ -172,10 +207,93 @@ void Viewer2::MakeIntersection(std::vector<TriangleGeo> triangles, Vec4 centre, 
         incre++;
     }*/
 
+    // Véritables valeurs
+
     int incre = 0;
+    // Ces deux tableaux seront probablement des tableaux de 3 éléments
+    // On va y ajouter les Darts correspondants aux points centraux des bouts de branche
+    std::vector<Dart> centre_branches;
+    std::vector<int> appartenance;
+
     for(TriangleGeo T : triangles)
     {
         Dart d = dart_faces[incre];
+
+        int cond_s0 = T.connectivity_[0]%(TYPE_PRIMITIVE + 1);
+        bool exist0 = false;
+        int cond_s1 = T.connectivity_[1]%(TYPE_PRIMITIVE + 1);
+        bool exist1 = false;
+        int cond_s2 = T.connectivity_[2]%(TYPE_PRIMITIVE + 1);
+        bool exist2 = false;
+
+        if(cond_s0 == 0)
+        {
+            if(!appartenance.empty())
+            {
+                // Si le dart n'est pas déjà dans le tableau, alors on le rajoute
+                for(int j : appartenance)
+                {
+                    if(j == cond_s0)
+                        exist0 = true;
+                }
+                if(!exist0)
+                {
+                    centre_branches.push_back(d);
+                    appartenance.push_back(cond_s0);
+                }
+            }
+            else
+            {
+                centre_branches.push_back(d);
+                appartenance.push_back(cond_s0);
+            }
+        }
+        if(cond_s1 == 0)
+        {
+            if(!appartenance.empty())
+            {
+                // Si le dart n'est pas déjà dans le tableau, alors on le rajoute
+                for(int j : appartenance)
+                {
+                    if(j == cond_s1)
+                        exist1 = true;
+                }
+                if(!exist1)
+                {
+                    centre_branches.push_back(map_.phi1(d));
+                    appartenance.push_back(cond_s1);
+                }
+            }
+            else
+            {
+                centre_branches.push_back(map_.phi1(d));
+                appartenance.push_back(cond_s1);
+            }
+        }
+        if(cond_s2 == 0)
+        {
+            if(!appartenance.empty())
+            {
+                // Si le dart n'est pas déjà dans le tableau, alors on le rajoute
+                for(int j : appartenance)
+                {
+                    if(j == cond_s2)
+                        exist2 = true;
+                }
+                if(!exist2)
+                {
+                    centre_branches.push_back(map_.phi_1(d));
+                    appartenance.push_back(cond_s2);
+                }
+            }
+            else
+            {
+                centre_branches.push_back(map_.phi_1(d));
+                appartenance.push_back(cond_s2);
+            }
+        }
+
+
         vertex_position_[Vertex2(d)] = sommets_intersection[T.connectivity_[0]];
         vertex_position_[Vertex2(map_.phi1(d))] = sommets_intersection[T.connectivity_[1]];
         vertex_position_[Vertex2(map_.phi_1(d))] = sommets_intersection[T.connectivity_[2]];
@@ -184,6 +302,11 @@ void Viewer2::MakeIntersection(std::vector<TriangleGeo> triangles, Vec4 centre, 
 
     // Afficher les coordonées avec un foreach ?
     //map_.foreach_cell([&] (Face2 f){ });
+
+
+    //
+    // Subdiviser la map2 en utilisant les coordonées
+    //
 
 
 

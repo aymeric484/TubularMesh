@@ -72,7 +72,8 @@ public:
     void import(const std::string& surface_mesh);
     virtual ~Viewer2();
     virtual void closeEvent(QCloseEvent *e);
-    void MakeIntersection(std::vector<TriangleGeo>, Vec4, std::vector<Vec3>);
+    void keyPressEvent(QKeyEvent *ev);
+    void MakeIntersection(std::vector<TriangleGeo>, std::vector<Vec3>);
 
 private:
 

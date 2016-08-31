@@ -98,7 +98,6 @@ Squelette::Squelette(const std::string& filename)
                 branche_courante.articulation_externe_end_ = branche_courante.articulations_.back();
                 branche_courante.articulations_.pop_back();
                 branche_courante.branch_size_ = branche_courante.articulations_.size();
-
                 branches_.push_back(branche_courante);
                 branche_courante.articulations_.clear(); // on ne recommencera pas de nouvelle branche
 
@@ -154,8 +153,8 @@ Squelette::Squelette(const std::string& filename)
                     int taille_max = branche_arrivee.pos_vertices_.size();
 
                     // On stocke le bout de la branche
-                    for(int n = 0; n < TYPE_PRIMITIVE; n++)
-                        inter.contours_.push_back(branche_arrivee.pos_vertices_[taille_max - TYPE_PRIMITIVE + n]);
+                    for(int n = 0; n < TYPE_PRIMITIVE + 1; n++)
+                        inter.contours_.push_back(branche_arrivee.pos_vertices_[taille_max - TYPE_PRIMITIVE - 1 + n]);
 
                     // Mettre un autre pushback *3 pour y stocker les indices de branches dans l'ordre
                     inter.branches_incidentes_.push_back(counter_end);
@@ -164,7 +163,7 @@ Squelette::Squelette(const std::string& filename)
                 }
 
                 Branch branche_depart = branches_[counter_begin];
-                for(int m = 1; m < TYPE_PRIMITIVE + 1; m++)
+                for(int m = 0; m < TYPE_PRIMITIVE + 1; m++)
                     inter.contours_.push_back(branche_depart.pos_vertices_[m]);
 
                 // Mettre un autre pushback *3 pour y stocker les indices de branches dans l'ordre
@@ -208,8 +207,6 @@ Squelette::Squelette(const std::string& filename)
     Intersection inter = intersections_[0];
     inter.ComputeConnectivity3();*/
 }
-
-
 
 
 

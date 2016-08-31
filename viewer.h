@@ -13,8 +13,11 @@
 #include <cgogn/core/cmap/cmap3.h>
 #include <cgogn/core/cmap/cmap2.h>
 #include <cgogn/core/basic/dart.h>
+#include <cgogn/core/utils/unique_ptr.h>
 
 #include <cgogn/io/map_import.h> // peut etre pas besoin
+#include <cgogn/io/tetgen_io.h>
+#include <cgogn/io/volume_import.h>
 
 #include <cgogn/rendering/map_render.h>
 #include <cgogn/rendering/drawer.h>
@@ -34,18 +37,26 @@
 #include <cgogn/geometry/algos/bounding_box.h>
 #include <cgogn/geometry/algos/normal.h>
 #include <cgogn/geometry/algos/filtering.h>
+#include <cgogn/geometry/types/geometry_traits.h>
 
+#include "tetgen.h"
 //#include "branch.h"
 #include "window.h"
 #include "coucheconcentrique.h"
 #include "squelette.h"
+#include "tetgen_structure_io.h"
 
+/*
 
+using Inherit = cgogn::io::VolumeImport<cgogn::CMap3<cgogn::DefaultMapTraits>::MapTraits>;
+template <typename T>
+using ChunkArray = typename Inherit::template ChunkArray<T>;*/
 
 using Map3 = cgogn::CMap3<cgogn::DefaultMapTraits>;
 using Map2 = cgogn::CMap2<cgogn::DefaultMapTraits>;
 
 using Vertex = typename Map3::Vertex;
+using Vertex2 = typename Map2::Vertex;
 using Edge = typename Map3::Edge;
 using Face = typename Map3::Face;
 using Face2 = typename Map2::Face;
@@ -56,9 +67,14 @@ using Dart = cgogn::Dart;
 using Vec3 = Eigen::Vector3d;
 using Vec4 = Eigen::Vector4d;
 
+using tetgenio = tetgen::tetgenio;
+using TetgenReal = REAL;
 
-template <typename T>
-using VertexAttribute = Map3::VertexAttribute<T>;
+
+template <typename T1>
+using VertexAttribute = Map3::VertexAttribute<T1>;
+template <typename T2>
+using VertexAttribute2 = Map2::VertexAttribute<T2>;
 using MapBuilder = cgogn::CMap3Builder_T<Map3::MapTraits>;
 using MapBuilder2 = cgogn::CMap2Builder_T<Map2::MapTraits>;
 
@@ -79,10 +95,11 @@ public:
     virtual void keyPressEvent(QKeyEvent *);
     void mousePressEvent(QMouseEvent*);
     void MakeFromSkeleton(const std::vector<Vec3>&, const unsigned int&);
+    void generate_tetgen(const std::string&);
 
     // Méthode temporaire de test
-    void MakeIntersection(std::vector<TriangleGeo>, Vec4); // Elle sera plus à inclure plus tard dans une boucle d'intersection de MakeFromSkeleton qui contiendra aussi une boucle de branche
-
+    //void MakeIntersection(std::vector<TriangleGeo>, Vec4); // Elle sera plus à inclure plus tard dans une boucle d'intersection de MakeFromSkeleton qui contiendra aussi une boucle de branche
+    void MakeIntersection(std::vector<TriangleGeo> triangles, std::vector<Vec3> sommets_intersection);
     //void OrientationFromSkel
     virtual ~Viewer();
     virtual void closeEvent(QCloseEvent *e);
@@ -95,14 +112,19 @@ private:
     void UpdateCoordinates();
     void GetCouchesConcentriques();
     void SubdivisionCouche(const unsigned int&);
+    std::unique_ptr<tetgenio> export_tetgen();
 
     Map3 map_;
+    Map3 map3bis_;
     Map2 map2_;
 
     std::vector<CoucheConcentrique> subdivised_volume_control_;
     std::vector<Dart> volume_control_;
 
     VertexAttribute<Vec3> vertex_position_;
+    VertexAttribute2<Vec3> vertex2_position_;
+
+
     VertexAttribute<Vec3> vertex_position2_;
     VertexAttribute<Vec3> vertex_normal_;
 

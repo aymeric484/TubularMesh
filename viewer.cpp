@@ -1,10 +1,200 @@
 #include "viewer.h"
 
 
+std::unique_ptr<tetgenio> Viewer::export_tetgen()
+{
+    // Passer une variable en copie
+
+    std::unique_ptr<tetgenio> output = cgogn::make_unique<tetgenio>();
+
+    // 0-based indexing
+    output->firstnumber = 0;
+
+    // input vertices
+    output->numberofpoints = map2_.template nb_cells<Vertex2::ORBIT>();
+    output->pointlist = new TetgenReal[output->numberofpoints * 3];
+
+    //for each vertex
+    map2_.foreach_cell([&] (Vertex2 v)
+    {
+        const Vec3& vec = vertex2_position_[v];
+        const unsigned int emb = map2_.embedding(v);
+        output->pointlist[3u*emb + 0u] = vec[0];
+        output->pointlist[3u*emb + 1u] = vec[1];
+        output->pointlist[3u*emb + 2u] = vec[2];
+    });
+
+    output->numberoffacets = map2_.template nb_cells<Face2::ORBIT>();
+    output->facetlist = new tetgenio::facet[output->numberoffacets];
+
+    //for each facet
+    unsigned int i = 0u;
+    map2_.foreach_cell([&] (Face2 face)
+    {
+        tetgenio::facet* f = &(output->facetlist[i]);// on accede à l'élément i de la liste et on récup le pointeur
+        tetgenio::init(f); // initialisation du pointeur
+        f->numberofpolygons = 1;
+        f->polygonlist = new tetgenio::polygon[1];// nature du polygone codée par le 1?
+        tetgenio::polygon* p = &f->polygonlist[0];// On récup le premier et le seul polygone
+        tetgenio::init(p);
+        p->numberofvertices = map2_.codegree(face);
+        p->vertexlist = new int[p->numberofvertices];
+
+        unsigned int j = 0u;
+        // construction du polygone avec 3 points de faces
+        map2_.foreach_incident_vertex(face, [&] (Vertex2 v)
+        {
+            p->vertexlist[j++] = map2_.embedding(v);
+        });
+
+        ++i;
+    });
+
+    return output;
+}
+
+void Viewer::generate_tetgen(const std::string& tetgen_args)
+{
+
+    auto tetgen_input = export_tetgen();
+
+    tetgenio tetgen_output;
+
+    tetgen::tetrahedralize(tetgen_args.c_str(), tetgen_input.get(), &tetgen_output);
+
+    TetgenStructureVolumeImport tetgen_import(&tetgen_output);
+
+    tetgen_import.import_file("");
+
+    tetgen_import.create_map(map3bis_);
+
+    map3bis_.check_map_integrity();
+
+    map_.merge(map3bis_);
+
+    Map3::VertexAttribute<Eigen::Vector3d> pos_attribute = map_.template get_attribute<Eigen::Vector3d, Map3::Vertex::ORBIT>("position");
+
+    cgogn_assert(pos_attribute.is_valid());
+
+    vertex_position_ = pos_attribute;
+
+    // Commment faire l affichage (ou est vertex_position_???)
+
+    // Ce qu'y était fait avant
+
+
+
+    cgogn::geometry::compute_AABB(vertex_position_, bb_);
+    setSceneRadius(bb_.diag_size()/2.0);
+    Vec3 center = bb_.center();
+    setSceneCenter(qoglviewer::Vec(center[0], center[1], center[2]));
+    showEntireScene();
+
+
+    /*
+    cgogn::geometry::compute_AABB(vertex_position_, bb_);
+    setSceneRadius(bb_.diag_size()/2.0);
+    Vec3 center = bb_.center();
+    setSceneCenter(qoglviewer::Vec(center[0], center[1], center[2]));
+    showEntireScene();*/
+
+    //tetgenio* volume = &tetgen_output;
+    //cgogn::io::TetgenVolumeImport<cgogn::CMap3::MapTraits, Eigen::Vector3d> that(tetgen_output);
+    //cgogn::io::TetgenVolumeImport<Map3, Vec3>* that;
+    //cgogn::io::TetVolumeImport<Map3, Vec3>* that;
+    //that->
+    //that.create_map(map_);
+    //that->set_nb_vertices(tetgen_output->numberofpoints);
+    //that->set_nb_volumes(tetgen_output->numberoftetrahedra);
+
+    /*
+    if (that.nb_vertices() == 0u || that.nb_volumes()== 0u)
+    {
+        cgogn_log_warning("TetgenStructureVolumeImport") << "Error while importing data.";
+        this->clear();
+        return false;
+    }
+
+    ChunkArray<Eigen::Vector3d>* position = that.template position_attribute<Eigen::Vector3d>();
+    //create vertices
+    std::vector<unsigned int> vertices_indices;
+    float* p = tetgen_output->pointlist ;
+
+    for(unsigned int i = 0u, end = that.nb_vertices(); i < end; ++i)
+    {
+        const unsigned id = this->insert_line_vertex_container();
+        position->operator[](id) = VEC3(Scalar(p[0]), Scalar(p[1]), Scalar(p[2]));
+        vertices_indices.push_back(id);
+        p += 3 ;
+    }
+
+    //create tetrahedrons
+    int* t = volume_->tetrahedronlist ;
+    for(uint32 i = 0u, end = this->nb_volumes(); i < end; ++i)
+    {
+        std::array<uint32,4> ids;
+        for(uint32 j = 0u; j < 4u; j++)
+            ids[j] = uint32(vertices_indices[t[j] - volume_->firstnumber]);
+        this->add_tetra(*position, ids[0], ids[1], ids[2], ids[3], true);
+        t += 4 ;
+    }*/
+
+
+
+
+    //TetgenV
+
+    //tetgen_output.set
+    // On fait une copie? cette étape semble inutile
+    // cgogn::io::VolumeImport<Map3::MapTraits> tetgen_import(&tetgen_output);
+
+    /*
+    tetgen_output->set_nb_vertices(volume_->numberofpoints);
+    this->set_nb_volumes(tetgen_output->numberoftetrahedra);
+
+    if (this->nb_vertices() == 0u || this->nb_volumes()== 0u)
+    {
+        cgogn_log_warning("TetgenStructureVolumeImport") << "Error while importing data.";
+        this->clear();
+        return false;
+    }
+
+    ChunkArray<VEC3>* position = this->template position_attribute<VEC3>();
+    //create vertices
+    std::vector<unsigned int> vertices_indices;
+    float64* p = volume_->pointlist;
+
+    for(uint32 i = 0u, end = this->nb_vertices(); i < end; ++i)
+    {
+        const unsigned id = this->insert_line_vertex_container();
+        position->operator[](id) = VEC3(Scalar(p[0]), Scalar(p[1]), Scalar(p[2]));
+        vertices_indices.push_back(id);
+        p += 3 ;
+    }*/
+
+    //create tetrahedrons
+    //int* t = volume_->tetrahedronlist ; // pointeur sur la liste de tétra => on incrémentera le pointeur
+
+
+    /*
+    for(unsigned int i = 0, end = this->nb_volumes(); i < end; ++i)
+    {
+        std::array<unsigned int,4> ids; // cool
+        for(uint32 j = 0u; j < 4u; j++)
+            ids[j] = uint32(vertices_indices[t[j] - volume_->firstnumber]);
+        this->add_tetra(*position, ids[0], ids[1], ids[2], ids[3], true); // Pourquoi pas, mais s'adapte à une struct de tetgen, fonctionne avec tetgenio??? => This à remplacer
+        t += 4 ;
+    }*/
+
+    //tetgen_import.create_map(map3bis_);
+
+}
+
+/*
 void Viewer::MakeIntersection(std::vector<TriangleGeo> triangles, Vec4 centre)
 {
 
-    /*
+
 
     //
     //
@@ -78,7 +268,7 @@ void Viewer::MakeIntersection(std::vector<TriangleGeo> triangles, Vec4 centre)
         j++;
     }
 
-    */
+
     //
 
 
@@ -88,7 +278,7 @@ void Viewer::MakeIntersection(std::vector<TriangleGeo> triangles, Vec4 centre)
     //
     //
 
-    /*
+
 
     //MapBuilder2 mbuild2(map_);
 
@@ -176,7 +366,276 @@ void Viewer::MakeIntersection(std::vector<TriangleGeo> triangles, Vec4 centre)
     setSceneRadius(bb_.diag_size()/2.0);
     Vec3 center = bb_.center();
     setSceneCenter(qoglviewer::Vec(center[0], center[1], center[2]));
-    showEntireScene();*/
+    showEntireScene();
+}*/
+
+void Viewer::MakeIntersection(std::vector<TriangleGeo> triangles, std::vector<Vec3> sommets_intersection)
+{
+    // TEST : Affichage d'un tétraèdre
+
+    /*
+    std::vector<Dart> tetra_complete; // Nous permettra un accès aux tétraèdres pour l'affectation des coordonnées
+    std::vector<Dart> tetra_open;
+
+    MapBuilder2 mbuild2(map_);
+
+    Dart d1 = mbuild2.add_face_topo_parent(3);
+    Dart d2 = mbuild2.add_face_topo_parent(3);
+    Dart d3 = mbuild2.add_face_topo_parent(3);
+    Dart d4 = mbuild2.add_face_topo_parent(3);
+
+    mbuild2.phi2_sew(map_.phi_1(d1), map_.phi1(d2));
+    mbuild2.phi2_sew(map_.phi_1(d2), map_.phi1(d3));
+    mbuild2.phi2_sew(map_.phi_1(d3), map_.phi1(d1));
+    mbuild2.phi2_sew(d1, d4);
+    mbuild2.close_map();
+
+    map_.check_map_integrity();
+
+    vertex_position_ = map_.add_attribute<Vec3, Vertex2::ORBIT>("position");
+    vertex_normal_ = map_.add_attribute<Vec3, Map2::Vertex::ORBIT>("normal");
+
+    Vec3 a(0.0, 0.0, 0.0);
+    Vec3 b(0.0, 2.0, 0.0);
+    Vec3 c(2.0, 0.0, 0.0);
+    Vec3 d(1.0, 1.0, 1.0);
+
+    vertex_position_[Vertex2(d1)] = a;
+    vertex_position_[Vertex2(d2)] = b;
+    vertex_position_[Vertex2(d3)] = c;
+    vertex_position_[Vertex2(map_.phi_1(d1))] = d;*/
+
+    //
+    //
+    // Polyèdre map2
+    //
+    //
+
+
+    //
+    // Init
+    //
+
+    MapBuilder2 mbuild2(map2_);
+    std::vector<Dart> dart_faces;
+
+    //
+    // Création et stockage des faces
+    //
+
+    for(int i = 0; i < triangles.size(); i++)
+    {
+        Dart d = mbuild2.add_face_topo_parent(3);
+        dart_faces.push_back(d);
+    }
+
+    //
+    // Se placer sur une face, pour toute les faces
+    //
+    int nb_courant = 0;
+    for(TriangleGeo T_test : triangles)
+    {
+        Dart d_test = dart_faces[nb_courant];
+        int a = T_test.ind1_;
+        int b = T_test.ind2_;
+        int c = T_test.ind3_;
+        int count = 0;
+
+        for(TriangleGeo T_courant : triangles)
+        {
+            //
+            // Déterminer si les triangles sont voisins
+            bool voisin = false;
+            bool sommet1 = T_courant.ind1_ == a || T_courant.ind1_ == b || T_courant.ind1_ == c;
+            bool sommet2 = T_courant.ind2_ == a || T_courant.ind2_ == b || T_courant.ind2_ == c;
+            bool sommet3 = T_courant.ind3_ == a || T_courant.ind3_ == b || T_courant.ind3_ == c;
+
+            if((sommet1 && sommet2) || (sommet3 && sommet1) || (sommet3 && sommet2))
+                voisin = true;
+
+            //
+            // Si ils sont voisins, alors créer la face et la coller sur la bonne arête
+            if(voisin)
+            {
+                // On accède à la face
+                Dart d_courant = dart_faces[count];
+
+                // Puis test pour le sewing : Toute les possibilités orientées y sont représentés
+                // test à partir du premier sommet
+                if(T_courant.ind1_ == a)
+                {
+                    if(T_courant.ind2_ = c)
+                    {
+                        d_courant = d_courant;
+                        if(map2_.phi2(d_courant) != d_courant && map2_.phi2(map2_.phi_1(d_test)) != map2_.phi_1(d_test))
+                            mbuild2.phi2_sew(d_courant, map2_.phi_1(d_test));
+                    }
+                    if(T_courant.ind3_ == b)
+                    {
+                        d_courant = map2_.phi_1(d_courant);
+                        if(map2_.phi2(d_courant) != d_courant && map2_.phi2(d_test) != d_test)
+                            mbuild2.phi2_sew(d_courant, d_test);
+                    }
+                }
+                // test à partir du deuxième sommet
+                if(T_courant.ind2_ == b)
+                {
+                    if(T_courant.ind1_ = c)
+                    {
+                        d_courant = d_courant;
+                        if(map2_.phi2(d_courant) != d_courant && map2_.phi2(map2_.phi1(d_test)) != map2_.phi1(d_test))
+                            mbuild2.phi2_sew(d_courant, map2_.phi1(d_test));
+                    }
+                    if(T_courant.ind3_ == a)
+                    {
+                        d_courant = map2_.phi1(d_courant);
+                        if(map2_.phi2(d_courant) != d_courant && map2_.phi2(d_test) != d_test)
+                            mbuild2.phi2_sew(d_courant, d_test);
+                    }
+                }
+                // test à partir du troisième sommet
+                if(T_courant.ind3_ == c)
+                {
+                    if(T_courant.ind1_ = b)
+                    {
+                        d_courant = map2_.phi_1(d_courant);
+                        if(map2_.phi2(d_courant) != d_courant && map2_.phi2(map2_.phi1(d_test)) != map2_.phi1(d_test))
+                            mbuild2.phi2_sew(d_courant, map2_.phi1(d_test));
+                    }
+                    if(T_courant.ind2_ == a)
+                    {
+                        d_courant = map2_.phi1(d_courant);
+                        if(map2_.phi2(d_courant) != d_courant && map2_.phi2(map2_.phi_1(d_test)) != map2_.phi_1(d_test))
+                            mbuild2.phi2_sew(d_courant, map2_.phi_1(d_test));
+                    }
+                }
+            }
+            count++;
+        }
+        nb_courant++;
+    }
+
+    mbuild2.close_map();
+
+    map2_.check_map_integrity();
+
+    vertex2_position_ = map2_.add_attribute<Vec3, Vertex2::ORBIT>("position");
+
+
+    // TEST : Pour vérifier que l'on est bien sur une sphère
+
+
+    /*int incre = 0;
+    for(TriangleGeo T : triangles)
+    {
+        Dart d = dart_faces[incre];
+        vertex_position_[Vertex2(d)] = T.sommets_[0];
+        vertex_position_[Vertex2(map_.phi1(d))] = T.sommets_[1];
+        vertex_position_[Vertex2(map_.phi_1(d))] = T.sommets_[2];
+        incre++;
+    }*/
+
+    // Véritables valeurs
+
+    int incre = 0;
+    // Ces deux tableaux seront probablement des tableaux de 3 éléments
+    // On va y ajouter les Darts correspondants aux points centraux des bouts de branche
+    std::vector<Dart> centre_branches;
+    std::vector<int> appartenance;
+
+    for(TriangleGeo T : triangles)
+    {
+        Dart d = dart_faces[incre];
+
+        int cond_s0 = T.connectivity_[0]%(TYPE_PRIMITIVE + 1);
+        bool exist0 = false;
+        int cond_s1 = T.connectivity_[1]%(TYPE_PRIMITIVE + 1);
+        bool exist1 = false;
+        int cond_s2 = T.connectivity_[2]%(TYPE_PRIMITIVE + 1);
+        bool exist2 = false;
+
+        if(cond_s0 == 0)
+        {
+            if(!appartenance.empty())
+            {
+                // Si le dart n'est pas déjà dans le tableau, alors on le rajoute
+                for(int j : appartenance)
+                {
+                    if(j == cond_s0)
+                        exist0 = true;
+                }
+                if(!exist0)
+                {
+                    centre_branches.push_back(d);
+                    appartenance.push_back(cond_s0);
+                }
+            }
+            else
+            {
+                centre_branches.push_back(d);
+                appartenance.push_back(cond_s0);
+            }
+        }
+        if(cond_s1 == 0)
+        {
+            if(!appartenance.empty())
+            {
+                // Si le dart n'est pas déjà dans le tableau, alors on le rajoute
+                for(int j : appartenance)
+                {
+                    if(j == cond_s1)
+                        exist1 = true;
+                }
+                if(!exist1)
+                {
+                    centre_branches.push_back(map2_.phi1(d));
+                    appartenance.push_back(cond_s1);
+                }
+            }
+            else
+            {
+                centre_branches.push_back(map2_.phi1(d));
+                appartenance.push_back(cond_s1);
+            }
+        }
+        if(cond_s2 == 0)
+        {
+            if(!appartenance.empty())
+            {
+                // Si le dart n'est pas déjà dans le tableau, alors on le rajoute
+                for(int j : appartenance)
+                {
+                    if(j == cond_s2)
+                        exist2 = true;
+                }
+                if(!exist2)
+                {
+                    centre_branches.push_back(map2_.phi_1(d));
+                    appartenance.push_back(cond_s2);
+                }
+            }
+            else
+            {
+                centre_branches.push_back(map2_.phi_1(d));
+                appartenance.push_back(cond_s2);
+            }
+        }
+
+
+        vertex2_position_[Vertex2(d)] = sommets_intersection[T.connectivity_[0]];
+        vertex2_position_[Vertex2(map2_.phi1(d))] = sommets_intersection[T.connectivity_[1]];
+        vertex2_position_[Vertex2(map2_.phi_1(d))] = sommets_intersection[T.connectivity_[2]];
+        incre++;
+    }
+
+    // Afficher les coordonées avec un foreach ?
+    //map_.foreach_cell([&] (Face2 f){ });
+
+
+    //
+    // Subdiviser la map2 en utilisant les coordonées
+    //
+
 }
 
 void Viewer::MakeFromSkeleton(const std::vector<Vec3>& positions, const unsigned int& primitives)
@@ -1136,6 +1595,7 @@ void Viewer::closeEvent(QCloseEvent*)
 
 Viewer::Viewer() :
     map_(),
+    map2_(),
     vertex_position_(),
     vertex_normal_(),
     cell_cache_prec_(map_),

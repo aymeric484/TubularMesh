@@ -25,8 +25,6 @@ void TriangleGeo::OrientedNormal(const Vec3& point_volume_courant)
     Vec3 res = point_volume_courant - sommets_[0];
     double sca = res.dot(normal_);
 
-    //assert(sca*sca > 0.001);
-
     if(sca < 0)
     {
         int i4 = connectivity_[0];

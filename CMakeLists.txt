@@ -14,7 +14,7 @@ set(CGOGN_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../CGoGN_2")
 set(CGOGN_SOURCE_DIR ${CGOGN_PATH})
 
 set(CGOGN_THIRDPARTY_QOGLVIEWER_INCLUDE_DIR "${CGOGN_PATH}/thirdparty/libQGLViewer/QOGLViewer" CACHE PATH "QOGLViewer include directory")
-set(CGOGN_THIRDPARTY_EIGEN3_INCLUDE_DIR "${CGOGN_PATH}/thirdparty/eigen-3.2.8" CACHE PATH "Include directory for find_package(Eigen3)")
+set(CGOGN_THIRDPARTY_EIGEN3_INCLUDE_DIR "${CGOGN_PATH}/thirdparty/eigen-3.2.9" CACHE PATH "Include directory for find_package(Eigen3)")
 set(CGOGN_THIRDPARTY_TINYXML2_INCLUDE_DIR "${CGOGN_PATH}/thirdparty/TinyXml2" CACHE PATH "TinyXml2 include directory")
 set(CGOGN_THIRDPARTY_LM6_INCLUDE_DIR "${CGOGN_PATH}/thirdparty/lm6" CACHE PATH "LM6 include directory")
 set(CGOGN_THIRDPARTY_PLY_INCLUDE_DIR "${CGOGN_PATH}/thirdparty/ply" CACHE PATH "Ply include directory")
@@ -25,7 +25,9 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 
 
-find_package(Qt5Widgets REQUIRED)
+#find_package(Qt5Widgets REQUIRED)
+find_package(Qt5 5.4.0 COMPONENTS Widgets REQUIRED)
+
 
 set(CMAKE_AUTOMOC ON)
 
@@ -40,6 +42,8 @@ set(HEADER_FILES
         squelette.h
         trianglegeo.h
         viewer2.h
+        tetgen.h
+        tetgen_structure_io.h
 )
 
 set(SOURCE_FILES
@@ -52,6 +56,9 @@ set(SOURCE_FILES
         squelette.cpp
         trianglegeo.cpp
         viewer2.cpp
+        tetgen.cxx
+        predicates.cxx
+        tetgen_structure_io.cpp
 )
 
 add_executable(${PROJECT_NAME} ${HEADER_FILES} ${SOURCE_FILES})

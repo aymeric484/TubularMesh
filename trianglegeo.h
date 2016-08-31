@@ -15,9 +15,6 @@ class TriangleGeo
 private:
 
 
-
-
-
 public:
 
     TriangleGeo(Vec3, Vec3, Vec3, int, int, int, int);

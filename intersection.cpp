@@ -3642,7 +3642,6 @@ void Intersection::ComputeConnectivity9()
         // Ici, trouver de quelle branche provient la face à l'aide de a,b,c qui nous donnent les indices des sommets de contours_
         for(int j : branches_incidentes_)
         {
-
             bool cond1 = a/(TYPE_PRIMITIVE + 1) == j;
             bool cond2 = b/(TYPE_PRIMITIVE + 1) == j;
             bool cond3 = c/(TYPE_PRIMITIVE + 1) == j;

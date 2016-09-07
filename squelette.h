@@ -10,9 +10,6 @@ class Squelette
 
 private:
 
-
-
-
     // Ces deux variables codent la connectivité du squelette
     // On obtiendra les extremité begin et end de ces deux variables
     // la position de l'indice est celle d'une branche et la valeur à cet indice sera l'indice d'une intersection
@@ -28,6 +25,9 @@ public:
 
     // Le constructeur sera un parseur
     Squelette(const std::string&);
+
+    std::vector<Vec3> positions_; // On y met toute les positions
+    std::vector<unsigned int> longueurs_; // on va y insérer les longueurs des branches
 
     // Dans un deuxième temps, il extraira le squelette d'une image 3D
 

@@ -123,9 +123,11 @@ Squelette::Squelette(const std::string& filename)
         branche.BranchSimplify(DISTANCE_MIN);
         branche.CreateCircleCoordinates(TYPE_PRIMITIVE);
         branche.SubdiDirectionT(COURBURE_MAX, TYPE_PRIMITIVE);
+        for(Vec3 v : branche.pos_vertices_)
+            positions_.push_back(v);
+        longueurs_.push_back(branche.pos_vertices_.size());
         branches_[k] = branche;
     }
-
 
 
     //
@@ -184,6 +186,14 @@ Squelette::Squelette(const std::string& filename)
         }
 
         counter_end++;
+    }
+
+
+    for(int j = 0; j < intersections_.size(); j++)
+    {
+        Intersection inter = intersections_[j];
+        inter.ComputeConnectivity9();
+        intersections_[j] = inter;
     }
 
     //

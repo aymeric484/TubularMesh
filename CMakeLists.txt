@@ -35,7 +35,6 @@ set(CMAKE_AUTOMOC ON)
 set(HEADER_FILES
         branch.h
         config.h
-        window.h
         coucheconcentrique.h
         viewer.h
         intersection.h
@@ -44,12 +43,12 @@ set(HEADER_FILES
         viewer2.h
         tetgen.h
         tetgen_structure_io.h
+        topo.h
 )
 
 set(SOURCE_FILES
 	main.cpp
         branch.cpp
-        window.cpp
         coucheconcentrique.cpp
         viewer.cpp
         intersection.cpp
@@ -59,6 +58,7 @@ set(SOURCE_FILES
         tetgen.cxx
         predicates.cxx
         tetgen_structure_io.cpp
+        topo.cpp
 )
 
 add_executable(${PROJECT_NAME} ${HEADER_FILES} ${SOURCE_FILES})

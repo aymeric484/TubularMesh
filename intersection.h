@@ -70,7 +70,7 @@ public:
     void ComputeConnectivity7();
     // Tentative emballage sans contrainte
     void ComputeConnectivity8();
-    // Tentative emballage sans priorité
+    // Tentative emballage sans priorité OK
     void ComputeConnectivity9();
 
 

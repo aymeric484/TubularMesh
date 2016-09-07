@@ -70,28 +70,32 @@ int main(int argc, char** argv)
 
 
 
-    std::string surface_mesh =  "../../TubularMesh/old/Vessels/dot/porte_t1.ply";
+    //std::string surface_mesh =  "../../TubularMesh/old/Vessels/dot/porte_t1.ply";
 
     QApplication application(argc, argv);
     qoglviewer::init_ogl_context();
 
-    Squelette squelette("../../TubularMesh/intersect4");
+
 
     //Branch branche0 = squelette.branches_[0];
     //Branch branche1 = squelette.branches_[1];
     //Branch branche2 = squelette.branches_[2];
+    /*
     Intersection inter = squelette.intersections_[0]; // compute connectivity devrait déjà avoir été fait dans le constructeur Squelette
-    inter.ComputeConnectivity9();
+    inter.ComputeConnectivity9();*/
 
     // Instantiate the viewer.
-    Viewer viewer;
-    viewer.setWindowTitle("simple_viewer");
+
+
     //viewer.import(surface_mesh);
-    //viewer.MakeFromSkeleton(branche0.pos_vertices_,TYPE_PRIMITIVE);
+    Squelette squelette("../../TubularMesh/intersect4");
+    Viewer viewer(squelette);
+    viewer.setWindowTitle("simple_viewer");
+    //viewer.MakeFromSkeleton(squelette, TYPE_PRIMITIVE);
     //viewer.MakeFromSkeleton(branche1.pos_vertices_,TYPE_PRIMITIVE);
     //viewer.MakeFromSkeleton(branche2.pos_vertices_,TYPE_PRIMITIVE);
-    viewer.MakeIntersection(inter.faces_, inter.contours_);
-    viewer.generate_tetgen("pq1.1Y");
+    //viewer.MakeIntersection(inter.faces_, inter.contours_);
+    //viewer.generate_tetgen("pq1.1Y");
     viewer.move(105,68);
     viewer.show();
 

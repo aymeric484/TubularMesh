@@ -44,6 +44,7 @@ set(HEADER_FILES
         tetgen.h
         tetgen_structure_io.h
         topo.h
+        branchtopo.h
 )
 
 set(SOURCE_FILES
@@ -59,6 +60,7 @@ set(SOURCE_FILES
         predicates.cxx
         tetgen_structure_io.cpp
         topo.cpp
+        branchtopo.cpp
 )
 
 add_executable(${PROJECT_NAME} ${HEADER_FILES} ${SOURCE_FILES})

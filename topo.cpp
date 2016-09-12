@@ -64,12 +64,11 @@ std::unique_ptr<tetgenio> topo::export_tetgen()
     return output;
 }
 
-void topo::generate_tetgen(const std::string& tetgen_args)
+void topo::Generate_tetgen(const std::string& tetgen_args, int count)
 {
     auto tetgen_input = export_tetgen();
 
     tetgenio tetgen_output;
-
 
     tetgen::tetrahedralize(tetgen_args.c_str(), tetgen_input.get(), &tetgen_output);
 
@@ -79,104 +78,13 @@ void topo::generate_tetgen(const std::string& tetgen_args)
 
     tetgen_import.create_map(map3inter_);
 
+    Map3::VertexAttribute<int> inter_code = map3inter_.add_attribute<int, Vertex::ORBIT>("appartenance");
+
+    map3inter_.foreach_cell([&] (Vertex v){
+        inter_code[v] = count + 1;
+    });
+
     map3inter_.check_map_integrity();
-
-
-    /*
-    cgogn::geometry::compute_AABB(vertex_position_, bb_);
-    setSceneRadius(bb_.diag_size()/2.0);
-    Vec3 center = bb_.center();
-    setSceneCenter(qoglviewer::Vec(center[0], center[1], center[2]));
-    showEntireScene();*/
-
-    //tetgenio* volume = &tetgen_output;
-    //cgogn::io::TetgenVolumeImport<cgogn::CMap3::MapTraits, Eigen::Vector3d> that(tetgen_output);
-    //cgogn::io::TetgenVolumeImport<Map3, Vec3>* that;
-    //cgogn::io::TetVolumeImport<Map3, Vec3>* that;
-    //that->
-    //that.create_map(map_);
-    //that->set_nb_vertices(tetgen_output->numberofpoints);
-    //that->set_nb_volumes(tetgen_output->numberoftetrahedra);
-
-    /*
-    if (that.nb_vertices() == 0u || that.nb_volumes()== 0u)
-    {
-        cgogn_log_warning("TetgenStructureVolumeImport") << "Error while importing data.";
-        this->clear();
-        return false;
-    }
-
-    ChunkArray<Eigen::Vector3d>* position = that.template position_attribute<Eigen::Vector3d>();
-    //create vertices
-    std::vector<unsigned int> vertices_indices;
-    float* p = tetgen_output->pointlist ;
-
-    for(unsigned int i = 0u, end = that.nb_vertices(); i < end; ++i)
-    {
-        const unsigned id = this->insert_line_vertex_container();
-        position->operator[](id) = VEC3(Scalar(p[0]), Scalar(p[1]), Scalar(p[2]));
-        vertices_indices.push_back(id);
-        p += 3 ;
-    }
-
-    //create tetrahedrons
-    int* t = volume_->tetrahedronlist ;
-    for(uint32 i = 0u, end = this->nb_volumes(); i < end; ++i)
-    {
-        std::array<uint32,4> ids;
-        for(uint32 j = 0u; j < 4u; j++)
-            ids[j] = uint32(vertices_indices[t[j] - volume_->firstnumber]);
-        this->add_tetra(*position, ids[0], ids[1], ids[2], ids[3], true);
-        t += 4 ;
-    }*/
-
-
-    //TetgenV
-
-    //tetgen_output.set
-    // On fait une copie? cette étape semble inutile
-    // cgogn::io::VolumeImport<Map3::MapTraits> tetgen_import(&tetgen_output);
-
-    /*
-    tetgen_output->set_nb_vertices(volume_->numberofpoints);
-    this->set_nb_volumes(tetgen_output->numberoftetrahedra);
-
-    if (this->nb_vertices() == 0u || this->nb_volumes()== 0u)
-    {
-        cgogn_log_warning("TetgenStructureVolumeImport") << "Error while importing data.";
-        this->clear();
-        return false;
-    }
-
-    ChunkArray<VEC3>* position = this->template position_attribute<VEC3>();
-    //create vertices
-    std::vector<unsigned int> vertices_indices;
-    float64* p = volume_->pointlist;
-
-    for(uint32 i = 0u, end = this->nb_vertices(); i < end; ++i)
-    {
-        const unsigned id = this->insert_line_vertex_container();
-        position->operator[](id) = VEC3(Scalar(p[0]), Scalar(p[1]), Scalar(p[2]));
-        vertices_indices.push_back(id);
-        p += 3 ;
-    }*/
-
-    //create tetrahedrons
-    //int* t = volume_->tetrahedronlist ; // pointeur sur la liste de tétra => on incrémentera le pointeur
-
-
-    /*
-    for(unsigned int i = 0, end = this->nb_volumes(); i < end; ++i)
-    {
-        std::array<unsigned int,4> ids; // cool
-        for(uint32 j = 0u; j < 4u; j++)
-            ids[j] = uint32(vertices_indices[t[j] - volume_->firstnumber]);
-        this->add_tetra(*position, ids[0], ids[1], ids[2], ids[3], true); // Pourquoi pas, mais s'adapte à une struct de tetgen, fonctionne avec tetgenio??? => This à remplacer
-        t += 4 ;
-    }*/
-
-    //tetgen_import.create_map(map3bis_);
-
 }
 
 // Passer les variables en réferences constantes pourrait être mieux
@@ -439,9 +347,6 @@ void topo::MakeIntersection(std::vector<TriangleGeo> triangles, std::vector<Vec3
         incre++;
     }
 
-    // Afficher les coordonées avec un foreach ?
-    // map_.foreach_cell([&] (Face2 f){ });
-
 
     //
     // Subdiviser la map2 en utilisant les coordonées
@@ -451,6 +356,104 @@ void topo::MakeIntersection(std::vector<TriangleGeo> triangles, std::vector<Vec3
 
 void topo::MakeBranch(const std::vector<Vec3>& positions, const unsigned int& primitives)
 {
+    BranchTopo Bt;
+    MapBuilder mbuild(map3branch_);
+    int nb_articulation = positions.size()/(primitives+1);
+    int volume_count = 0;
+    unsigned int count = 0;
+    unsigned int arti_count = 0;
+
+    // creation de nos volumes
+    for(int n = primitives ; n < nb_articulation*primitives ; n++)
+        Bt.volume_control_.push_back(mbuild.add_prism_topo(3));//construit le prisme et renvoi un dart du prisme d'une des faces triangulaires, rendant un parcourt du prisme possible
+
+
+    for(int m = 1 ; m < nb_articulation-1 ; m++)
+    {
+        for(int k = 0; k < primitives; k++)
+        {
+            // coudre les faces triangulaires des prismes(3d)
+            Dart v1 = map3branch_.phi2(map3branch_.phi1(map3branch_.phi1(map3branch_.phi2(Bt.volume_control_[(m-1)*primitives + k]))));
+            Dart v2 = Bt.volume_control_[m*primitives + k];
+            mbuild.sew_volumes(v1, v2);
+
+            // coudre les faces rectangulaires des prismes(3d)
+            Dart v3 = map3branch_.phi2(map3branch_.phi1(Bt.volume_control_[(m-1)*primitives + k]));
+            Dart v4;
+            if(k+1 != primitives)
+                v4 = map3branch_.phi2(Bt.volume_control_[(m-1)*primitives + k + 1]);
+            else
+                v4 = map3branch_.phi2(Bt.volume_control_[(m-1)*primitives]);
+            mbuild.sew_volumes(v3,v4);
+        }
+    }
+
+
+    // dernière serie de volumes (bout de branche)
+    for(int k = 0; k < primitives; k++)
+    {
+        Dart v3 = map3branch_.phi2(map3branch_.phi1(Bt.volume_control_[(nb_articulation-2)*primitives + k]));
+        Dart v4;
+        if(k+1 != primitives)
+            v4 = map3branch_.phi2(Bt.volume_control_[(nb_articulation-2)*primitives + k + 1]);
+        else
+            v4 = map3branch_.phi2(Bt.volume_control_[(nb_articulation-2)*primitives]);
+        mbuild.sew_volumes(v3,v4);
+    }
+
+    mbuild.close_map(); //reboucle les volumes en bord de map
+
+
+    map3branch_.foreach_cell([&] (Volume v){ volume_count++; }); // affichage du nombre de volumes
+    std::cout << " Il y a " << volume_count << " Volume(s)" << std::endl;
+
+
+    //Les vertices vont être indexe automatiquement & creation d'un de leur attribut, position dans l espace 3D
+
+    vertex_normal_ = map3branch_.add_attribute<Vec3, Vertex::ORBIT>("normal");
+    vertex_position_ = map3branch_.add_attribute<Vec3, Vertex::ORBIT>("position");
+
+    // affectation d'un point du prisme triangulaire & du point en commun aux n-prismes (n = primitive)
+    for(Dart d : Bt.volume_control_)
+    {
+        // il s'agit des positions des articulations
+        if(count == 0 || count == primitives + 1 )
+        {
+            Vertex v1(map3branch_.phi1(d));
+            vertex_position_[v1] = positions[arti_count * (primitives + 1)];
+            arti_count++;
+            count = 1;
+        }
+
+        // ici on a la position des points autour de chaque articulation
+        Vertex v2(d);
+        vertex_position_[v2] = positions[(arti_count-1) * (primitives + 1) + count]; // le facteur est (arti_count - 1) car on a arti_count++ dans le if
+        count++;
+    }
+
+
+
+
+    // On gère la dernière articulation
+
+    Dart last_arti = map3branch_.phi1(map3branch_.phi1(map3branch_.phi2(map3branch_.phi1(Bt.volume_control_[Bt.volume_control_.size() - 1]))));
+
+    vertex_position_[Vertex(last_arti)] = positions[(primitives+1)*(nb_articulation-1)];
+
+    // Ici, on gere la derniere face (les points autour de la dernière articulation)
+    for(unsigned int i = 0; i < primitives; i++)
+    {
+        Dart last_points = map3branch_.phi1(map3branch_.phi2(map3branch_.phi1(map3branch_.phi1(map3branch_.phi2(Bt.volume_control_[Bt.volume_control_.size()-primitives + i])))));
+        Vertex points(last_points);
+        vertex_position_[points] = positions[Bt.volume_control_.size() + nb_articulation + i];
+    }
+
+
+    map3branch_.check_map_integrity();
+
+
+        /*
+
     MapBuilder mbuild(map3branch_);
 
     int nb_articulation = positions.size()/(primitives + 1); // Remplacer position.size() par longueur[i]
@@ -486,12 +489,12 @@ void topo::MakeBranch(const std::vector<Vec3>& positions, const unsigned int& pr
     // dernière serie de volumes (bout de branche)
     for(int k = 0; k < primitives; k++)
     {
-        Dart v3 = map3branch_.phi2(map3branch_.phi1(volume_control_[volume_control_.size() - (nb_articulation)*primitives + (nb_articulation-1)*primitives + k]));
+        Dart v3 = map3branch_.phi2(map3branch_.phi1(volume_control_[volume_control_.size() - primitives + k]));
         Dart v4;
         if(k+1 != primitives)
-            v4 = map3branch_.phi2(volume_control_[volume_control_.size() - (nb_articulation)*primitives + (nb_articulation-1)*primitives + k + 1]);
+            v4 = map3branch_.phi2(volume_control_[volume_control_.size() - primitives + k + 1]);
         else
-            v4 = map3branch_.phi2(volume_control_[volume_control_.size() - (nb_articulation)*primitives + (nb_articulation-1)*primitives]);
+            v4 = map3branch_.phi2(volume_control_[volume_control_.size() - primitives]);
         mbuild.sew_volumes(v3,v4);
     }
 
@@ -537,152 +540,476 @@ void topo::MakeBranch(const std::vector<Vec3>& positions, const unsigned int& pr
         Vertex points(last_points);
         vertex_position_[points] = positions[positions.size() - primitives + i];
     }
+    */
+
+    controls_.push_back(Bt);
 }
 
 void topo::MakeFromSkeleton(const Squelette& mon_squelette, const unsigned int& primitives)
 {
-
+    MapBuilder mbuild(map_);
     // On parcourt toute les branches et on construit la topologie de chacune via MakeBranch dans une map intermediaire. Puis on merge cette map à notre map3 finale
     for(Branch branche : mon_squelette.branches_)
     {
-        MakeBranch(branche.pos_vertices_ , primitives);
-        save_pos_.push_back((branche.branch_size_ - 1)*primitives);
-        map_.merge(map3branch_);
-        map3branch_.clear_and_remove_attributes();
+        BranchTopo Bt;
 
+        int nb_articulation = branche.pos_vertices_.size()/(primitives+1);
+
+        // creation de nos volumes
+        for(int n = primitives ; n < nb_articulation*primitives ; n++)
+            Bt.volume_control_.push_back(mbuild.add_prism_topo(3));//construit le prisme et renvoi un dart du prisme d'une des faces triangulaires, rendant un parcourt du prisme possible
+
+
+        for(int m = 1 ; m < nb_articulation-1 ; m++)
+        {
+            for(int k = 0; k < primitives; k++)
+            {
+                // coudre les faces triangulaires des prismes(3d)
+                Dart v1 = map_.phi2(map_.phi1(map_.phi1(map_.phi2(Bt.volume_control_[(m-1)*primitives + k]))));
+                Dart v2 = Bt.volume_control_[m*primitives + k];
+                mbuild.sew_volumes(v1, v2);
+
+                // coudre les faces rectangulaires des prismes(3d)
+                Dart v3 = map_.phi2(map_.phi1(Bt.volume_control_[(m-1)*primitives + k]));
+                Dart v4;
+                if(k+1 != primitives)
+                    v4 = map_.phi2(Bt.volume_control_[(m-1)*primitives + k + 1]);
+                else
+                    v4 = map_.phi2(Bt.volume_control_[(m-1)*primitives]);
+                mbuild.sew_volumes(v3,v4);
+            }
+        }
+
+
+        // dernière serie de volumes (bout de branche)
+        for(int k = 0; k < primitives; k++)
+        {
+            Dart v3 = map_.phi2(map_.phi1(Bt.volume_control_[(nb_articulation-2)*primitives + k]));
+            Dart v4;
+            if(k+1 != primitives)
+                v4 = map_.phi2(Bt.volume_control_[(nb_articulation-2)*primitives + k + 1]);
+            else
+                v4 = map_.phi2(Bt.volume_control_[(nb_articulation-2)*primitives]);
+            mbuild.sew_volumes(v3,v4);
+        }
+
+                //save_pos_.push_back((branche.branch_size_ - 1)*primitives);
+        controls_.push_back(Bt);
     }
 
+    mbuild.close_map(); //reboucle les volumes en bord de map
+
+    vertex_normal_ = map_.add_attribute<Vec3, Vertex::ORBIT>("normal");
+    vertex_position_ = map_.add_attribute<Vec3, Vertex::ORBIT>("position");
+
+    // affectation d'un point du prisme triangulaire & du point en commun aux n-prismes (n = primitive)
+    int ind_branch = 0;
+    for(Branch branche : mon_squelette.branches_)
+    {
+        int nb_articulation = branche.pos_vertices_.size()/(primitives+1);
+        unsigned int count = 0;
+        unsigned int arti_count = 0;
+
+        for(Dart d : controls_[ind_branch].volume_control_)
+        {
+            // il s'agit des positions des articulations
+            if(count == 0 || count == primitives + 1 )
+            {
+                Vertex v1(map_.phi1(d));
+                vertex_position_[v1] = branche.pos_vertices_[arti_count * (primitives + 1)];
+                arti_count++;
+                count = 1;
+            }
+
+            // ici on a la position des points autour de chaque articulation
+            Vertex v2(d);
+            vertex_position_[v2] = branche.pos_vertices_[(arti_count-1) * (primitives + 1) + count]; // le facteur est (arti_count - 1) car on a arti_count++ dans le if
+            count++;
+        }
+
+        // On gère la dernière articulation
+
+        Dart last_arti = map_.phi1(map_.phi1(map_.phi2(map_.phi1(controls_[ind_branch].volume_control_[controls_[ind_branch].volume_control_.size() - 1]))));
+
+        vertex_position_[Vertex(last_arti)] = branche.pos_vertices_[(primitives+1)*(nb_articulation-1)];
+
+        // Ici, on gere la derniere face (les points autour de la dernière articulation)
+        for(unsigned int i = 0; i < primitives; i++)
+        {
+            Dart last_points = map_.phi1(map_.phi2(map_.phi1(map_.phi1(map_.phi2(controls_[ind_branch].volume_control_[controls_[ind_branch].volume_control_.size()-primitives + i])))));
+            Vertex points(last_points);
+            vertex_position_[points] = branche.pos_vertices_[controls_[ind_branch].volume_control_.size() + nb_articulation + i];
+        }
+
+        ind_branch++;
+    }
+
+
+
+
     // On parcourt toute les intersection et on construit la topologie 2-Map puis 3-Map de chacune via MakeIntersection dans une map intermediaire. Puis on merge cette map à notre map3 finale
+
+    int count = 0;
     for(Intersection inter : mon_squelette.intersections_)
     {
         MakeIntersection(inter.faces_, inter.contours_);
-        generate_tetgen("pq1.1Y");
+        Generate_tetgen("pq1.1Y", count);
         map2_.clear();
         map_.merge(map3inter_);
         map3inter_.clear_and_remove_attributes();
+        count++;
     }
 
-    Map3::VertexAttribute<Eigen::Vector3d> pos_attribute = map_.template get_attribute<Eigen::Vector3d, Map3::Vertex::ORBIT>("position");
+    vertex_appartenance_ = map_.template get_attribute<int, Map3::Vertex::ORBIT>("appartenance");
+
+    map_.foreach_cell([&] (Vertex v){ std::cout<<vertex_appartenance_[v]<<std::endl;}, [&] (Vertex v){ return false;} );
+
+    /*
+    for(Intersection inter : mon_squelette.intersections_)
+    {
+        // liste des branches incidentes
+        for(int i = 0; i < inter.branches_incidentes_.size(); i++)
+        {
+            //Branch branche = branches_[inter.branches_incidentes_[i]];
+            Dart dbord = controls_[inter.branches_incidentes_[i]].volume_control_[controls_[inter.branches_incidentes_[i]].volume_control_.size() - 1];
+            Dart dcentre = map_.phi
+        }
+    }*/
+
+
+
+    // On va tester chaque branche avec chaque intersection
+    for(int i = 0; i < mon_squelette.branches_.size(); i++)
+    {
+        // Pour savoir si la branche arrive ou quitte l intersection
+        int indic_arrivee = mon_squelette.ind_bout_arrive_[i];
+        int indic_depart = mon_squelette.ind_bout_depart_[i];
+
+        int increment = 0;
+        for(Intersection inter : mon_squelette.intersections_)
+        {
+            Dart dbord, dcentre;
+
+            bool inter_liee = false; // determinera si notre branche courant est liée à l'intersection courante
+            if(indic_arrivee == inter.indicateur_)
+            {
+                dbord = map_.phi<2112>(controls_[i].volume_control_[controls_[i].volume_control_.size() - 1]);
+                dcentre = map_.phi1(dbord);
+                inter_liee = true;
+            }
+            if(indic_depart == inter.indicateur_)
+            {
+                dbord = controls_[i].volume_control_[0];
+                dcentre = map_.phi1(dbord);
+                inter_liee = true;
+            }
+
+
+            if(inter_liee == true)
+            {
+                double distbord_ref = 100;
+                double distcentre_ref = 100;
+                Vertex VbordInter;
+                Vertex VcentreInter;
+
+                map_.foreach_cell([&] (Vertex v){
+
+                    //
+                    // Tester la géométrie => trouver les points les plus proche de bord et centre
+
+                    Vec3 bordvec = vertex_position_[dbord] - vertex_position_[v];
+                    Vec3 centrevec = vertex_position_[dcentre] - vertex_position_[v];
+                    if(distbord_ref < bordvec.norm())
+                    {
+                        distbord_ref = bordvec.norm();
+                        VbordInter = v;
+                    }
+                    if(distcentre_ref < centrevec.norm())
+                    {
+                        distcentre_ref = centrevec.norm();
+                        VcentreInter = v;
+                    }
+
+                }, [&] (Vertex v){
+                    if(vertex_appartenance_[v] == increment)
+                        return true;
+                });
+
+                //
+                // TEST
+
+                 std::cout << "devrait apparaitre 3fois" << std::endl;
+
+                //
+                // Maintenant on a nos deux sommets pour l'interesection
+
+                 /*
+                 MapBuilder mbuild(map_);
+
+                 std::cout << "coucou 1" << std::endl;
+
+                 //mbuild.sew_volumes(VbordInter.dart, dbord);
+                 Vertex v;
+
+                 //map_.foreach_adjacent_volume_through_vertex(v);
+                 //map_.foreach_dart_of_PHI1()
+                 //map_.foreach_dart_of_orbit()
+
+                 std::cout << "coucou 2" << std::endl;
+                 //mbuild.sew_volumes(VcentreInter.dart, dcentre);
+
+                 mbuild.close_map();*/
+            }
+
+            increment++;
+        }
+
+
+    }
+
+
+
+
+
+
+    /*
     vertex_position_ = pos_attribute;
-    cgogn_assert(pos_attribute.is_valid());
+    cgogn_assert(pos_attribute.is_valid());*/
     map_.check_map_integrity();
 }
 
 void topo::InterpolationConcentrique()
 {
 
-    // si pas d'appuis sur "C" alors la méthode est inutile car il n'y a pas eu de subdivision
     if(nb_appuis_ > 0)
     {
 
-        // ce terme sert à répartit les points le long d'un segment bord-centre pour chaque volumes
-        //double Terme_repartition = exp(indice_repartition_*0.02) - 1;
-        //double Terme_repartition = (1 + tanh(indice_repartition_*0.2))*10 - 1;
-
-        //std::cout << "Terme repartition" << Terme_repartition << std::endl;
-
-
-        //
-        //
-        // Subdivision concentrique (Ur)
-        //
-        //
-
-        //
-        // Subdivision concentrique sur tout les volumes sauf ceux de la dernière articulation
-        //
-
-        for(Dart d : volume_control_)
+        for(BranchTopo Bt : controls_)
         {
-            Dart d_centre = d; // d_centre sera modifié
-            Dart d_bord = d; // on commence au bord, il s'agit bien de notre Dart de bord final
 
-            //std::vector<Dart> volumes_concentriques; // On va y lister tout les volumes concentrique du prisme à base triangulaire courant (désigné par "d")
-            //volumes_concentriques.push_back(d); // le premier volume concentrique partage le même dart que le prisme avant la subdiv concentrique càd "d"
+            // ce terme sert à répartit les points le long d'un segment bord-centre pour chaque volumes
+            //double Terme_repartition = exp(indice_repartition_*0.02) - 1;
+            //double Terme_repartition = (1 + tanh(indice_repartition_*0.2))*10 - 1;
 
-            // Objectif => trouver le centre
-            for(int k = 0; k < nb_appuis_; k++)
+            //std::cout << "Terme repartition" << Terme_repartition << std::endl;
+
+
+            //
+            //
+            // Subdivision concentrique (Ur)
+            //
+            //
+
+            //
+            // Subdivision concentrique sur tout les volumes sauf ceux de la dernière articulation
+            //
+
+            for(Dart d : Bt.volume_control_)
             {
-                d_centre = map_.phi<12321>(d_centre); // déplacement sur chaque nouveau volume ajouté par subdivision concentrique
+                Dart d_centre = d; // d_centre sera modifié
+                Dart d_bord = d; // on commence au bord, il s'agit bien de notre Dart de bord final
+
+                //std::vector<Dart> volumes_concentriques; // On va y lister tout les volumes concentrique du prisme à base triangulaire courant (désigné par "d")
+                //volumes_concentriques.push_back(d); // le premier volume concentrique partage le même dart que le prisme avant la subdiv concentrique càd "d"
+
+                // Objectif => trouver le centre
+                for(int k = 0; k < nb_appuis_; k++)
+                {
+                    d_centre = map_.phi<12321>(d_centre); // déplacement sur chaque nouveau volume ajouté par subdivision concentrique
+                }
+                // Le dernier volume que l'on trouve en se propageant vers le centre est un prisme à base triangulaire. Phi1 nous donne le centre
+                d_centre = map_.phi1(d_centre);
+
+
+                // Objectif => affecter les bonnes coordonées aux point du segment bord-centre, pour chaque volume
+                for(int i = 1; i < nb_appuis_ + 1; i++)
+                {
+
+                    double Terme_repartition = exp(indice_repartition_*0.08) + (nb_appuis_ + 1) - i;
+
+
+                    // on ne veut pas tronquer coeff (division d'entiers euclidienne pas correcte ici), d'où les casts double
+                    double coeff;
+                    double m = double(i);
+                    double n = double(nb_appuis_ + 1);
+                    coeff = m/(n + Terme_repartition);
+
+                    d = map_.phi<12321>(d); // déplacement sur chaque nouveau volume ajouté par subdivision concentrique
+                    vertex_position_[Vertex(d)] = coeff*vertex_position_[Vertex(d_centre)] + (1-coeff)*vertex_position_[Vertex(d_bord)];
+
+                }
             }
-            // Le dernier volume que l'on trouve en se propageant vers le centre est un prisme à base triangulaire. Phi1 nous donne le centre
-            d_centre = map_.phi1(d_centre);
 
 
-            // Objectif => affecter les bonnes coordonées aux point du segment bord-centre, pour chaque volume
-            for(int i = 1; i < nb_appuis_ + 1; i++)
+            //
+            // Gestion de la dernière articulation pour la subdivision concentrique
+            //
+
+            for(int i = 0; i < TYPE_PRIMITIVE; i++)
             {
 
-                double Terme_repartition = exp(indice_repartition_*0.08) + (nb_appuis_ + 1) - i;
+                Dart d = map_.phi<211>(Bt.volume_control_[Bt.volume_control_.size() - TYPE_PRIMITIVE + i]); // nous place sur un vertex de bord, de la dernière face
+                Dart d_bord = d; // On se situe maintenant sur le bord d'où cette affectation
+                Dart d_centre = d; // le recalculer dans la boucle peut être inutile pour cette dernière face vu que ce sera toujours le même Vertex
 
-                // on ne veut pas tronquer coeff (division d'entiers euclidienne pas correcte ici), d'où les casts double
-                double coeff;
-                double m = double(i);
-                double n = double(nb_appuis_ + 1);
-                coeff = m/(n + Terme_repartition);
+                // Objectif => trouver le centre
+                for(int k = 0; k < nb_appuis_; k++)
+                {
+                    d_centre = map_.phi<1213121>(d_centre); // déplacement sur chaque nouveau volume ajouté par subdivision concentrique
+                }
+                d_centre = map_.phi1(d_centre);
 
-                d = map_.phi<12321>(d); // déplacement sur chaque nouveau volume ajouté par subdivision concentrique
-                vertex_position_[Vertex(d)] = coeff*vertex_position_[Vertex(d_centre)] + (1-coeff)*vertex_position_[Vertex(d_bord)];
+                // Objectif => affecter les bonnes coordonées aux point du segment bord-centre, pour chaque volume de la dernière articulation
+                for(int i = 1; i < nb_appuis_ + 1; i++)
+                {
+                    double Terme_repartition = exp(indice_repartition_*0.08) + (nb_appuis_ + 1) - i;
 
+
+                    // on ne veut pas tronquer coeff (division d'entiers euclidienne pas correcte ici), d'où les casts double
+                    double coeff;
+                    double m = double(i);
+                    double n = double(nb_appuis_ + 1);
+
+                    coeff = m/(n + Terme_repartition); // poid qu'on associera à un bout du segment (point commun à tt les volumes de l'articulation => centre)
+
+                    d = map_.phi<1213121>(d); // déplacement sur chaque nouveau volume ajouté par subdivision concentrique
+                    vertex_position_[Vertex(d)] = coeff*vertex_position_[Vertex(d_centre)] + (1-coeff)*vertex_position_[Vertex(d_bord)];
+
+                }
 
             }
         }
 
-
-        //
-        // Gestion de la dernière articulation pour la subdivision concentrique
-        //
-
-        for(int i = 0; i < TYPE_PRIMITIVE; i++)
-        {
-
-            Dart d = map_.phi<211>(volume_control_[volume_control_.size() - TYPE_PRIMITIVE + i]); // nous place sur un vertex de bord, de la dernière face
-            Dart d_bord = d; // On se situe maintenant sur le bord d'où cette affectation
-            Dart d_centre = d; // le recalculer dans la boucle peut être inutile pour cette dernière face vu que ce sera toujours le même Vertex
-
-            // Objectif => trouver le centre
-            for(int k = 0; k < nb_appuis_; k++)
+         /*
+            // si pas d'appuis sur "C" alors la méthode est inutile car il n'y a pas eu de subdivision
+            if(nb_appuis_ > 0)
             {
-                d_centre = map_.phi<1213121>(d_centre); // déplacement sur chaque nouveau volume ajouté par subdivision concentrique
-            }
-            d_centre = map_.phi1(d_centre);
 
-            // Objectif => affecter les bonnes coordonées aux point du segment bord-centre, pour chaque volume de la dernière articulation
-            for(int i = 1; i < nb_appuis_ + 1; i++)
-            {
-                double Terme_repartition = exp(indice_repartition_*0.08) + (nb_appuis_ + 1) - i;
+                // ce terme sert à répartit les points le long d'un segment bord-centre pour chaque volumes
+                //double Terme_repartition = exp(indice_repartition_*0.02) - 1;
+                //double Terme_repartition = (1 + tanh(indice_repartition_*0.2))*10 - 1;
+                //std::cout << "Terme repartition" << Terme_repartition << std::endl;
 
-                // on ne veut pas tronquer coeff (division d'entiers euclidienne pas correcte ici), d'où les casts double
-                double coeff;
-                double m = double(i);
-                double n = double(nb_appuis_ + 1);
 
-                coeff = m/(n + Terme_repartition); // poid qu'on associera à un bout du segment (point commun à tt les volumes de l'articulation => centre)
+                //
+                //
+                // Subdivision concentrique (Ur)
+                //
+                //
 
-                d = map_.phi<1213121>(d); // déplacement sur chaque nouveau volume ajouté par subdivision concentrique
-                vertex_position_[Vertex(d)] = coeff*vertex_position_[Vertex(d_centre)] + (1-coeff)*vertex_position_[Vertex(d_bord)];
+                //
+                // Subdivision concentrique sur tout les volumes sauf ceux de la dernière articulation
+                //
+                int Nb_branch = 0;
+                int increC = save_pos_[Nb_branch];
+                int counter = 0;
 
-            }
+                for(Dart d : Bt.volume_control_)
+                {
 
-        }
+                    if(counter == increC)
+                    {
+
+                        //
+                        // Gestion de la dernière articulation pour la subdivision concentrique
+                        //
+
+                        for(int i = 0; i < TYPE_PRIMITIVE; i++)
+                        {
+
+                            Dart d = map_.phi<211>(volume_control_[increC - TYPE_PRIMITIVE + i]); // nous place sur un vertex de bord, de la dernière face
+                            Dart d_bord = d; // On se situe maintenant sur le bord d'où cette affectation
+                            Dart d_centre = d; // le recalculer dans la boucle peut être inutile pour cette dernière face vu que ce sera toujours le même Vertex
+
+                            // Objectif => trouver le centre
+                            for(int k = 0; k < nb_appuis_; k++)
+                            {
+                                d_centre = map_.phi<1213121>(d_centre); // déplacement sur chaque nouveau volume ajouté par subdivision concentrique
+                            }
+                            d_centre = map_.phi1(d_centre);
+
+                            // Objectif => affecter les bonnes coordonées aux point du segment bord-centre, pour chaque volume de la dernière articulation
+                            for(int i = 1; i < nb_appuis_ + 1; i++)
+                            {
+                                double Terme_repartition = exp(indice_repartition_*0.08) + (nb_appuis_ + 1) - i;
+
+                                // on ne veut pas tronquer coeff (division d'entiers euclidienne pas correcte ici), d'où les casts double
+                                double coeff;
+                                double m = double(i);
+                                double n = double(nb_appuis_ + 1);
+
+                                coeff = m/(n + Terme_repartition); // poid qu'on associera à un bout du segment (point commun à tt les volumes de l'articulation => centre)
+
+                                d = map_.phi<1213121>(d); // déplacement sur chaque nouveau volume ajouté par subdivision concentrique
+                                vertex_position_[Vertex(d)] = coeff*vertex_position_[Vertex(d_centre)] + (1-coeff)*vertex_position_[Vertex(d_bord)];
+
+                            }
+
+                        }
+
+                        increC += save_pos_[Nb_branch++];
+
+                    }
+
+                    Dart d_centre = d; // d_centre sera modifié
+                    Dart d_bord = d; // on commence au bord, il s'agit bien de notre Dart de bord final
+
+                    //std::vector<Dart> volumes_concentriques; // On va y lister tout les volumes concentrique du prisme à base triangulaire courant (désigné par "d")
+                    //volumes_concentriques.push_back(d); // le premier volume concentrique partage le même dart que le prisme avant la subdiv concentrique càd "d"
+
+                    // Objectif => trouver le centre
+                    for(int k = 0; k < nb_appuis_; k++)
+                    {
+                        d_centre = map_.phi<12321>(d_centre); // déplacement sur chaque nouveau volume ajouté par subdivision concentrique
+                    }
+                    // Le dernier volume que l'on trouve en se propageant vers le centre est un prisme à base triangulaire. Phi1 nous donne le centre
+                    d_centre = map_.phi1(d_centre);
+
+
+                    // Objectif => affecter les bonnes coordonées aux point du segment bord-centre, pour chaque volume
+                    for(int i = 1; i < nb_appuis_ + 1; i++)
+                    {
+
+                        double Terme_repartition = exp(indice_repartition_*0.08) + (nb_appuis_ + 1) - i;
+
+                        // on ne veut pas tronquer coeff (division d'entiers euclidienne pas correcte ici), d'où les casts double
+                        double coeff;
+                        double m = double(i);
+                        double n = double(nb_appuis_ + 1);
+                        coeff = m/(n + Terme_repartition);
+
+                        d = map_.phi<12321>(d); // déplacement sur chaque nouveau volume ajouté par subdivision concentrique
+                        vertex_position_[Vertex(d)] = coeff*vertex_position_[Vertex(d_centre)] + (1-coeff)*vertex_position_[Vertex(d_bord)];
+
+
+                    }
+                    counter++;
+                }
+            }*/
     }
 }
 
 void topo::GetCouchesConcentriques()
 {
-    subdivised_volume_control_.clear();
-
-    for(Dart d : volume_control_)
+    int counter = 0;
+    for(BranchTopo Bt : controls_)
     {
-        for(int k = 0; k < nb_appuis_ + 1; k++ )
+        Bt.subdivised_volume_control_.clear();
+
+        for(Dart d : Bt.volume_control_)
         {
-            CoucheConcentrique couche_courante(k,{d});
-            subdivised_volume_control_.push_back(couche_courante);
-            d = map_.phi<12321>(d);
+            for(int k = 0; k < nb_appuis_ + 1; k++ )
+            {
+                CoucheConcentrique couche_courante(k,{d});
+                Bt.subdivised_volume_control_.push_back(couche_courante);
+                d = map_.phi<12321>(d);
+            }
+
         }
 
+        controls_[counter] = Bt;
+        counter++;
     }
-
 
 }
 
@@ -692,442 +1019,561 @@ void topo::UpdateCoordinates()
     // On y accèdera facilement grâce aux coucheconcentrique.ind_volumes[]
     // On stockera pas dans chaque couche un attribut d_opp puisqu'on utilisera coucheconcentrique.ind_volumes[0] de la couche suivante
 
-
     //
     // Tous les volumes sauf le dernier
-
-    for(unsigned int i = 0; i < subdivised_volume_control_.size(); i++)
+    int counter = 0;
+    for(BranchTopo Bt : controls_)
     {
-        CoucheConcentrique couche_courante = subdivised_volume_control_[i];
-
-        Dart extremite_gauche = couche_courante.indic_volumes_[0];
-
-        Dart extremite_droite;
-        if(((i)%(TYPE_PRIMITIVE*(nb_appuis_ + 1))) + (nb_appuis_ + 1) > ((nb_appuis_ + 1)*TYPE_PRIMITIVE) - 1) // gros doute pour le "- 1"
-            extremite_droite = subdivised_volume_control_[i + nb_appuis_ + 1 - TYPE_PRIMITIVE*(nb_appuis_ + 1) ].indic_volumes_[0];
-        else
-            extremite_droite = subdivised_volume_control_[i + nb_appuis_ + 1].indic_volumes_[0]; // penser à la seg. fault pour le dernier volume
-
-
-        for(std::vector<Dart>::iterator it = couche_courante.indic_volumes_.begin(); it < couche_courante.indic_volumes_.end(); ++it)
+        for(unsigned int i = 0; i < Bt.subdivised_volume_control_.size(); i++)
         {
-            int index = it - (couche_courante.indic_volumes_.begin());
-            if(index > 0)
-            {
-                double coeff = double(index)/double(couche_courante.indic_volumes_.size());
-                vertex_position_[Vertex(*it)] = (coeff)*vertex_position_[Vertex(extremite_droite)] + (1-coeff)*vertex_position_[Vertex(extremite_gauche)];
+            CoucheConcentrique couche_courante = Bt.subdivised_volume_control_[i];
 
+            Dart extremite_gauche = couche_courante.indic_volumes_[0];
+
+            Dart extremite_droite;
+            if(((i)%(TYPE_PRIMITIVE*(nb_appuis_ + 1))) + (nb_appuis_ + 1) > ((nb_appuis_ + 1)*TYPE_PRIMITIVE) - 1) // gros doute pour le "- 1"
+                extremite_droite = Bt.subdivised_volume_control_[i + nb_appuis_ + 1 - TYPE_PRIMITIVE*(nb_appuis_ + 1) ].indic_volumes_[0];
+            else
+                extremite_droite = Bt.subdivised_volume_control_[i + nb_appuis_ + 1].indic_volumes_[0]; // penser à la seg. fault pour le dernier volume
+
+
+            for(std::vector<Dart>::iterator it = couche_courante.indic_volumes_.begin(); it < couche_courante.indic_volumes_.end(); ++it)
+            {
+                int index = it - (couche_courante.indic_volumes_.begin());
+                if(index > 0)
+                {
+                    double coeff = double(index)/double(couche_courante.indic_volumes_.size());
+                    vertex_position_[Vertex(*it)] = (coeff)*vertex_position_[Vertex(extremite_droite)] + (1-coeff)*vertex_position_[Vertex(extremite_gauche)];
+
+                }
             }
         }
-    }
 
 
-    //
-    // gérer le dernier volume
+        //
+        // gérer le dernier volume
 
-    for(unsigned int i = 0; i < TYPE_PRIMITIVE*(nb_appuis_ + 1); i++)
-    {
-
-        CoucheConcentrique couche_courante = subdivised_volume_control_[subdivised_volume_control_.size() - TYPE_PRIMITIVE*(nb_appuis_ + 1) + i];
-
-        Dart extremite_gauche = map_.phi<211>(couche_courante.indic_volumes_[0]);
-
-        Dart extremite_droite;
-        if((i + (nb_appuis_ + 1)) > ((nb_appuis_ + 1)*TYPE_PRIMITIVE) - 1)
-            extremite_droite = map_.phi<211>(subdivised_volume_control_[subdivised_volume_control_.size() - 2*(nb_appuis_ + 1)*TYPE_PRIMITIVE + i + nb_appuis_ + 1 ].indic_volumes_[0]);
-        else
-            extremite_droite = map_.phi<211>(subdivised_volume_control_[subdivised_volume_control_.size() - (nb_appuis_ + 1)*TYPE_PRIMITIVE + i + nb_appuis_ + 1].indic_volumes_[0]); // penser à la seg. fault pour le dernier volume
-
-
-        for(std::vector<Dart>::iterator it = couche_courante.indic_volumes_.begin(); it < couche_courante.indic_volumes_.end(); ++it)
+        for(unsigned int i = 0; i < TYPE_PRIMITIVE*(nb_appuis_ + 1); i++)
         {
 
-            int index = it - (couche_courante.indic_volumes_.begin());
-            if(index > 0)
-            {
-                double coeff = double(index)/double(couche_courante.indic_volumes_.size());
-                vertex_position_[Vertex(map_.phi<211>(*it))] = (coeff)*vertex_position_[Vertex(extremite_droite)] + (1-coeff)*vertex_position_[Vertex(extremite_gauche)];
+            CoucheConcentrique couche_courante = Bt.subdivised_volume_control_[Bt.subdivised_volume_control_.size() - TYPE_PRIMITIVE*(nb_appuis_ + 1) + i];
 
+            Dart extremite_gauche = map_.phi<211>(couche_courante.indic_volumes_[0]);
+
+            Dart extremite_droite;
+            if((i + (nb_appuis_ + 1)) > ((nb_appuis_ + 1)*TYPE_PRIMITIVE) - 1)
+                extremite_droite = map_.phi<211>(Bt.subdivised_volume_control_[Bt.subdivised_volume_control_.size() - 2*(nb_appuis_ + 1)*TYPE_PRIMITIVE + i + nb_appuis_ + 1 ].indic_volumes_[0]);
+            else
+                extremite_droite = map_.phi<211>(Bt.subdivised_volume_control_[Bt.subdivised_volume_control_.size() - (nb_appuis_ + 1)*TYPE_PRIMITIVE + i + nb_appuis_ + 1].indic_volumes_[0]); // penser à la seg. fault pour le dernier volume
+
+
+            for(std::vector<Dart>::iterator it = couche_courante.indic_volumes_.begin(); it < couche_courante.indic_volumes_.end(); ++it)
+            {
+
+                int index = it - (couche_courante.indic_volumes_.begin());
+                if(index > 0)
+                {
+                    double coeff = double(index)/double(couche_courante.indic_volumes_.size());
+                    vertex_position_[Vertex(map_.phi<211>(*it))] = (coeff)*vertex_position_[Vertex(extremite_droite)] + (1-coeff)*vertex_position_[Vertex(extremite_gauche)];
+
+                }
             }
         }
+        controls_[counter] = Bt;
+        counter++;
     }
 }
 
 void topo::SubdivisionCouche(const unsigned int& Nb_subdiv) // mettre un paramètre pourrait nous indiquer de combien subdiviser => boucle for{} pour la subdivision (2^N * Nb_subdiv)
 {
-    //
-    //
-    // Creation des sommets
-    //
-    //
-
-
-    //
-    // Pour la face d'entrée de tous les volumes
-    //
-
-    unsigned int j = 0;
-    for(CoucheConcentrique couche_courante : subdivised_volume_control_)
+    int count = 0;
+    for(BranchTopo Bt : controls_)
     {
 
         //
-        // Calcul du nombre de volume que l'on doit avoir à la fin
-
-        int Volumes_init = (couche_courante.indic_volumes_.size()-1);
-
-        // variable numérotant les couches du centre vers le bord
-        double diff = nb_appuis_ - couche_courante.etage_;
-
-        // La fonction en o(2^N) => ici N^2
-        double num;
-
-        if(couche_courante.etage_ > 0)
-            num = diff + 1.0;
-        else
-            num = (diff - 1) + 1.0;
-
-        int Nb_vol = pow(2, int(log2(num)) + 1 )*Nb_subdiv - 1;
-
-        if(Nb_vol == 0)
-            std::cout<< "num est pas bon car Nb_vol ne doit janais valoir 0 : " << num << std::endl;
-
-        //std::cout << "Nombre courant : " << Nb_vol << std::endl;
-
-
-/*
-        if( couche_courante.etage_ > 0)
-            Nb_vol = pow(2, nb_appuis_ - couche_courante.etage_ + 1 )*Nb_subdiv - 1 ;
-        else
-            Nb_vol = pow(2,nb_appuis_ )*Nb_subdiv - 1; // en effet, cette arête doit être coupée autant de fois que sa précédente du point de vue concentrique
-
-*/
-
-
+        //
+        // Creation des sommets
+        //
+        //
 
 
         //
-        // Création de tous les sommets
+        // Pour la face d'entrée de tous les volumes
+        //
 
-        Dart d_courant = couche_courante.indic_volumes_[0];
-        Dart d_opp = map_.phi_1(d_courant); // à inclure dans une boucle for pour parcourir sizeof(indic_volume) et faire map_.phi_1 ect.. à chaque itération
-        // On en profitera pour supprimer des volumes si besoin && pour déplacer les vertices grâce à l'information de Nb_Volume
-
-        for(unsigned int i = 1; i < Nb_vol + 1; i++)
+        unsigned int j = 0;
+        for(CoucheConcentrique couche_courante : Bt.subdivised_volume_control_)
         {
-            // Calcul du coeff
-            double ind = double(i);
-            double max = double(Nb_vol + 1);
-            double coeff = ind/max;
 
-            // Creation du point
-            Vertex v = map_.cut_edge(Edge(d_opp));
-
-            couche_courante.indic_volumes_.insert(couche_courante.indic_volumes_.begin() + i, v.dart); // l'insertion détruit mon itérateur couche_courante?
-
-            // Calcul des coordonées du point => interpolation linéaire
-            vertex_position_[v] = vertex_position_[Vertex(d_courant)]*(1-coeff) + vertex_position_[Vertex(d_opp)]*coeff;
-
-        }
-        subdivised_volume_control_[j] = couche_courante;
-        j++;
-    }
-
-
-    //
-    // Pour la face de sortie des derniers volumes
-    //
-
-    for(unsigned int k = 0; k < TYPE_PRIMITIVE*(nb_appuis_ + 1); k++)
-    {
-        CoucheConcentrique couche_actu = subdivised_volume_control_[subdivised_volume_control_.size() - TYPE_PRIMITIVE*(nb_appuis_ + 1) + k];
-        Dart d_bottom = couche_actu.indic_volumes_[0];
-        d_bottom = map_.phi<211>(d_bottom);
-        Dart d_opp = map_.phi<212>(d_bottom); // devrait se trouver dans une boucle for : phi1 à itérer sizeof(indic_volume) fois
-
-        //
-        // Calcul du nombre de volume que l'on doit avoir à la fin
-
-        // variable numérotant les couches du centre vers le bord
-        double diff = nb_appuis_ - couche_actu.etage_;
-
-        // La fonction en o(2^N) => ici N^2
-        double num = 0.5;
-
-        if(couche_actu.etage_ > 0)
-            num = diff + 1.0;
-        else
-            num = (diff - 1) + 1.0;
-
-        int Nb_vol = pow(2, int(log2(num) + 1))*Nb_subdiv - 1;
-
-        if(Nb_vol == 0)
-            std::cout<< "num est pas bon car Nb_vol ne doit janais valoir 0 : " << num << std::endl;
-
-/*
-        //int Nb_vol;
-        if( couche_actu.etage_ > 0)
-            Nb_vol = pow(2, nb_appuis_ - couche_actu.etage_  + 1)*Nb_subdiv - 1;
-        else
-            Nb_vol = pow(2,nb_appuis_ )*Nb_subdiv - 1; // en effet, cette arête doit être coupée autant de fois que sa précédente du point de vue concentrique
-*/
-
-        //
-        // Création de tous les sommets
-
-        for(unsigned int i = 1; i < Nb_vol + 1; i++)
-        {
-            // Calcul du coeff
-            double ind = double(i);
-            double max = double(Nb_vol + 1);
-            double coeff = ind/max;
-
-            // Creation du point
-            Vertex v = map_.cut_edge(Edge(d_opp));
-
-            // Calcul des coordonées du point => interpolation linéaire
-            vertex_position_[v] = vertex_position_[Vertex(d_bottom)]*(1-coeff) + vertex_position_[Vertex(d_opp)]*coeff;
-        }
-    }
-
-
-
-
-    //
-    //
-    // Creation des arêtes
-    //
-    //
-
-
-    //
-    // On parcourt toute les couches sauf celles de la dernière articulation
-    //
-
-    for(std::vector<CoucheConcentrique>::iterator it = subdivised_volume_control_.begin(); it < subdivised_volume_control_.end() - (nb_appuis_ + 1)*TYPE_PRIMITIVE; ++it)
-    {
-
-        //
-        // indice courant
-
-        // Condition sur l'étage => être au dernier étage ne présente pas d'intérêt
-        if((*it).etage_ < nb_appuis_) //il se pourrait que si => revoir stratégie de création
-        {
             //
-            // Couches voisines
+            // Calcul du nombre de volume que l'on doit avoir à la fin
 
-            CoucheConcentrique Couche_suivante_interieure = *(it + 1); //subdivised_volume_control_[index + 1];
-            // Condition sur l'articulation => être en bout de branche n'est pas intéressant => cas à traiter à part pour les arêtes de fin => on est sur de la valider => à supprimer
-            CoucheConcentrique Couche_suivante_inferieure = *(it + (nb_appuis_ + 1)*TYPE_PRIMITIVE); //subdivised_volume_control_[index + (nb_appuis_ + 1)*TYPE_PRIMITIVE];
+            int Volumes_init = (couche_courante.indic_volumes_.size()-1);
 
-            int ratio = (*it).indic_volumes_.size()/Couche_suivante_interieure.indic_volumes_.size();
+            // variable numérotant les couches du centre vers le bord
+            double diff = nb_appuis_ - couche_courante.etage_;
+
+            // La fonction en o(2^N) => ici N^2
+            double num;
+
+            if(couche_courante.etage_ > 0)
+                num = diff + 1.0;
+            else
+                num = (diff - 1) + 1.0;
+
+            int Nb_vol = pow(2, int(log2(num)) + 1 )*Nb_subdiv - 1;
+
+            if(Nb_vol == 0)
+                std::cout<< "num est pas bon car Nb_vol ne doit janais valoir 0 : " << num << std::endl;
+
+            //std::cout << "Nombre courant : " << Nb_vol << std::endl;
+
+    /*
+            if( couche_courante.etage_ > 0)
+                Nb_vol = pow(2, nb_appuis_ - couche_courante.etage_ + 1 )*Nb_subdiv - 1 ;
+            else
+                Nb_vol = pow(2,nb_appuis_ )*Nb_subdiv - 1; // en effet, cette arête doit être coupée autant de fois que sa précédente du point de vue concentrique
+
+    */
 
 
 
 
             //
-            //Arête e1
+            // Création de tous les sommets
 
-            for(unsigned int i = 1; i < Couche_suivante_interieure.indic_volumes_.size(); i++) // utiliser la taille max du tableau de couche_courante pourrait etre mieux => à revoir
+            Dart d_courant = couche_courante.indic_volumes_[0];
+            Dart d_opp = map_.phi_1(d_courant); // à inclure dans une boucle for pour parcourir sizeof(indic_volume) et faire map_.phi_1 ect.. à chaque itération
+            // On en profitera pour supprimer des volumes si besoin && pour déplacer les vertices grâce à l'information de Nb_Volume
+
+            for(unsigned int i = 1; i < Nb_vol + 1; i++)
             {
-                Dart d1;
+                // Calcul du coeff
+                double ind = double(i);
+                double max = double(Nb_vol + 1);
+                double coeff = ind/max;
 
-                // Si l'on se trouve sur l'étage 0, alors l'étage 1 (le suivant interieur) a obligatoirement autant de dart
-                if((*it).etage_ == 0)
-                    d1 = (*it).indic_volumes_[i];
-                else
-                    d1 = (*it).indic_volumes_[ratio*i]; // *2 à changer dans un future proche => 2 - 1 indique nombre de point qu'il faut sauter (ne pas relier)
+                // Creation du point
+                Vertex v = map_.cut_edge(Edge(d_opp));
 
-                Dart d2 = map_.phi<2321>(Couche_suivante_interieure.indic_volumes_[i]); // Pas de 2 * i car les dart stocké sur cette couche correspondent à ceux qu'il faut utiliser et pas aux autre de ce même segment
+                couche_courante.indic_volumes_.insert(couche_courante.indic_volumes_.begin() + i, v.dart); // l'insertion détruit mon itérateur couche_courante?
 
-                Edge e1; // On relie tout les sommets(darts) de couche suivante interieur
-                e1 = map_.cut_face(d1,d2);
+                // Calcul des coordonées du point => interpolation linéaire
+                vertex_position_[v] = vertex_position_[Vertex(d_courant)]*(1-coeff) + vertex_position_[Vertex(d_opp)]*coeff;
+
             }
+            Bt.subdivised_volume_control_[j] = couche_courante;
+            j++;
+        }
 
+
+        //
+        // Pour la face de sortie des derniers volumes
+        //
+
+        for(unsigned int k = 0; k < TYPE_PRIMITIVE*(nb_appuis_ + 1); k++)
+        {
+            CoucheConcentrique couche_actu = Bt.subdivised_volume_control_[Bt.subdivised_volume_control_.size() - TYPE_PRIMITIVE*(nb_appuis_ + 1) + k];
+            Dart d_bottom = couche_actu.indic_volumes_[0];
+            d_bottom = map_.phi<211>(d_bottom);
+            Dart d_opp = map_.phi<212>(d_bottom); // devrait se trouver dans une boucle for : phi1 à itérer sizeof(indic_volume) fois
 
             //
-            // Arête e2
+            // Calcul du nombre de volume que l'on doit avoir à la fin
 
-            for(unsigned int i = 1; i < (*it).indic_volumes_.size(); i++)
+            // variable numérotant les couches du centre vers le bord
+            double diff = nb_appuis_ - couche_actu.etage_;
+
+            // La fonction en o(2^N) => ici N^2
+            double num = 0.5;
+
+            if(couche_actu.etage_ > 0)
+                num = diff + 1.0;
+            else
+                num = (diff - 1) + 1.0;
+
+            int Nb_vol = pow(2, int(log2(num) + 1))*Nb_subdiv - 1;
+
+            if(Nb_vol == 0)
+                std::cout<< "num est pas bon car Nb_vol ne doit janais valoir 0 : " << num << std::endl;
+
+    /*
+            //int Nb_vol;
+            if( couche_actu.etage_ > 0)
+                Nb_vol = pow(2, nb_appuis_ - couche_actu.etage_  + 1)*Nb_subdiv - 1;
+            else
+                Nb_vol = pow(2,nb_appuis_ )*Nb_subdiv - 1; // en effet, cette arête doit être coupée autant de fois que sa précédente du point de vue concentrique
+    */
+
+            //
+            // Création de tous les sommets
+
+            for(unsigned int i = 1; i < Nb_vol + 1; i++)
             {
-                Dart d4 = map_.phi<32>(Couche_suivante_inferieure.indic_volumes_[i]);
-                Dart d1 = (*it).indic_volumes_[i];
-                Edge e2 = map_.cut_face(map_.phi<21>(d1), d4);
+                // Calcul du coeff
+                double ind = double(i);
+                double max = double(Nb_vol + 1);
+                double coeff = ind/max;
+
+                // Creation du point
+                Vertex v = map_.cut_edge(Edge(d_opp));
+
+                // Calcul des coordonées du point => interpolation linéaire
+                vertex_position_[v] = vertex_position_[Vertex(d_bottom)]*(1-coeff) + vertex_position_[Vertex(d_opp)]*coeff;
             }
+        }
+
+
+
+
+        //
+        //
+        // Creation des arêtes
+        //
+        //
+
+
+        //
+        // On parcourt toute les couches sauf celles de la dernière articulation
+        //
+
+        for(std::vector<CoucheConcentrique>::iterator it = Bt.subdivised_volume_control_.begin(); it < Bt.subdivised_volume_control_.end() - (nb_appuis_ + 1)*TYPE_PRIMITIVE; ++it)
+        {
 
             //
-            // On gère l'avant dernière couche pour tracer l'arête de la face interieure de ce volume => Arête e3
+            // indice courant
 
-            if((*it).etage_ == nb_appuis_ - 1)
+            // Condition sur l'étage => être au dernier étage ne présente pas d'intérêt
+            if((*it).etage_ < nb_appuis_) //il se pourrait que si => revoir stratégie de création
             {
-                CoucheConcentrique Couche_int_inf = *(it + (nb_appuis_ + 1)*TYPE_PRIMITIVE + 1); // ajouter + 1?
-                for(unsigned int i = 1; i < Couche_suivante_interieure.indic_volumes_.size(); i++) // utiliser la taille max du tableau de couche suivante inf pourrait etre mieux
+                //
+                // Couches voisines
+
+                CoucheConcentrique Couche_suivante_interieure = *(it + 1); //subdivised_volume_control_[index + 1];
+                // Condition sur l'articulation => être en bout de branche n'est pas intéressant => cas à traiter à part pour les arêtes de fin => on est sur de la valider => à supprimer
+                CoucheConcentrique Couche_suivante_inferieure = *(it + (nb_appuis_ + 1)*TYPE_PRIMITIVE); //subdivised_volume_control_[index + (nb_appuis_ + 1)*TYPE_PRIMITIVE];
+
+                int ratio = (*it).indic_volumes_.size()/Couche_suivante_interieure.indic_volumes_.size();
+
+
+
+
+                //
+                //Arête e1
+
+                for(unsigned int i = 1; i < Couche_suivante_interieure.indic_volumes_.size(); i++) // utiliser la taille max du tableau de couche_courante pourrait etre mieux => à revoir
                 {
+                    Dart d1;
 
-                    Dart d2 = map_.phi<23>(Couche_suivante_interieure.indic_volumes_[i]); // ou peut etre 2*i
-                    Dart d3 = map_.phi<3231>(Couche_int_inf.indic_volumes_[i]);
-                    Edge e3 = map_.cut_face(d2, d3);
+                    // Si l'on se trouve sur l'étage 0, alors l'étage 1 (le suivant interieur) a obligatoirement autant de dart
+                    if((*it).etage_ == 0)
+                        d1 = (*it).indic_volumes_[i];
+                    else
+                        d1 = (*it).indic_volumes_[ratio*i]; // *2 à changer dans un future proche => 2 - 1 indique nombre de point qu'il faut sauter (ne pas relier)
+
+                    Dart d2 = map_.phi<2321>(Couche_suivante_interieure.indic_volumes_[i]); // Pas de 2 * i car les dart stocké sur cette couche correspondent à ceux qu'il faut utiliser et pas aux autre de ce même segment
+
+                    Edge e1; // On relie tout les sommets(darts) de couche suivante interieur
+                    e1 = map_.cut_face(d1,d2);
+                }
+
+
+                //
+                // Arête e2
+
+                for(unsigned int i = 1; i < (*it).indic_volumes_.size(); i++)
+                {
+                    Dart d4 = map_.phi<32>(Couche_suivante_inferieure.indic_volumes_[i]);
+                    Dart d1 = (*it).indic_volumes_[i];
+                    Edge e2 = map_.cut_face(map_.phi<21>(d1), d4);
+                }
+
+                //
+                // On gère l'avant dernière couche pour tracer l'arête de la face interieure de ce volume => Arête e3
+
+                if((*it).etage_ == nb_appuis_ - 1)
+                {
+                    CoucheConcentrique Couche_int_inf = *(it + (nb_appuis_ + 1)*TYPE_PRIMITIVE + 1); // ajouter + 1?
+                    for(unsigned int i = 1; i < Couche_suivante_interieure.indic_volumes_.size(); i++) // utiliser la taille max du tableau de couche suivante inf pourrait etre mieux
+                    {
+
+                        Dart d2 = map_.phi<23>(Couche_suivante_interieure.indic_volumes_[i]); // ou peut etre 2*i
+                        Dart d3 = map_.phi<3231>(Couche_int_inf.indic_volumes_[i]);
+                        Edge e3 = map_.cut_face(d2, d3);
+                    }
+
                 }
 
             }
-
         }
-    }
 
 
-    //
-    // Arêtes de dernier volume
-    //
+        //
+        // Arêtes de dernier volume
+        //
 
-    for(unsigned int k = 0; k < TYPE_PRIMITIVE*(nb_appuis_ + 1); k++)
-    {
-        // On se place sur le bon volume de subdivision concentrique
-        CoucheConcentrique couche_actu = subdivised_volume_control_[subdivised_volume_control_.size() - TYPE_PRIMITIVE*(nb_appuis_ + 1) + k];
-        CoucheConcentrique couche_suivante = couche_actu; // Juste pour déclarer
-
-
-        if(couche_actu.etage_ > 0 && couche_actu.etage_ < nb_appuis_)
-            couche_suivante = subdivised_volume_control_[subdivised_volume_control_.size() - TYPE_PRIMITIVE*(nb_appuis_ + 1) + k + 1]; // Véritable affectation
-
-        if(couche_actu.etage_ == 0)
+        for(unsigned int k = 0; k < TYPE_PRIMITIVE*(nb_appuis_ + 1); k++)
         {
-            Dart d_courant = couche_actu.indic_volumes_[0];
-            Dart d2 = map_.phi<12>(d_courant);
-            Dart d3 = map_.phi<112>(d2);
-            Dart d4 = map_.phi<112>(d3);
+            // On se place sur le bon volume de subdivision concentrique
+            CoucheConcentrique couche_actu = Bt.subdivised_volume_control_[Bt.subdivised_volume_control_.size() - TYPE_PRIMITIVE*(nb_appuis_ + 1) + k];
+            CoucheConcentrique couche_suivante = couche_actu; // Juste pour déclarer
 
-            for(unsigned int i = 1; i < couche_actu.indic_volumes_.size(); i++)
+
+            if(couche_actu.etage_ > 0 && couche_actu.etage_ < nb_appuis_)
+                couche_suivante = Bt.subdivised_volume_control_[Bt.subdivised_volume_control_.size() - TYPE_PRIMITIVE*(nb_appuis_ + 1) + k + 1]; // Véritable affectation
+
+            if(couche_actu.etage_ == 0)
             {
-                Dart d1 = couche_actu.indic_volumes_[i];
+                Dart d_courant = couche_actu.indic_volumes_[0];
+                Dart d2 = map_.phi<12>(d_courant);
+                Dart d3 = map_.phi<112>(d2);
+                Dart d4 = map_.phi<112>(d3);
 
-                // Gestion arête e1
-                Edge e1 = map_.cut_face(d1,map_.phi<21>(d2));
+                for(unsigned int i = 1; i < couche_actu.indic_volumes_.size(); i++)
+                {
+                    Dart d1 = couche_actu.indic_volumes_[i];
 
-                // Gestion arête e2
-                Edge e2 = map_.cut_face(d4, map_.phi<21>(d1));
-
-                // Gestion arête e4
-                Edge e4 = map_.cut_face(d3, map_.phi<21>(d4));
-
-                // Déplacement des darts
-                d2 = map_.phi_1(d2);
-                d3 = map_.phi_1(map_.phi2(map_.phi_1(d3)));
-                d4 = map_.phi_1(map_.phi2(map_.phi_1(d4)));
-
-            }
-        }
-        else if(couche_actu.etage_ > 0 && couche_actu.etage_ < nb_appuis_)
-        {
-            Dart d_courant = couche_actu.indic_volumes_[0];
-            Dart d2 = map_.phi<12>(d_courant);
-            Dart d3 = map_.phi<112>(d2);
-            Dart d4 = map_.phi<112>(d3);
-
-            int ratio = couche_actu.indic_volumes_.size()/couche_suivante.indic_volumes_.size();
-
-
-            for(unsigned int i = 1; i < couche_actu.indic_volumes_.size(); i++)
-            {
-                Dart d1 = couche_actu.indic_volumes_[i];
-
-                // Gestion arête e1
-                if(i%ratio == 0)
+                    // Gestion arête e1
                     Edge e1 = map_.cut_face(d1,map_.phi<21>(d2));
 
-                // Gestion arête e2
-                Edge e2 = map_.cut_face(d4, map_.phi<21>(d1));
+                    // Gestion arête e2
+                    Edge e2 = map_.cut_face(d4, map_.phi<21>(d1));
 
-                // Gestion arête e4
-                if(i%ratio == 0)
+                    // Gestion arête e4
                     Edge e4 = map_.cut_face(d3, map_.phi<21>(d4));
 
-                // Déplacement des darts
-                if(i%ratio == 0)
-                {
+                    // Déplacement des darts
                     d2 = map_.phi_1(d2);
                     d3 = map_.phi_1(map_.phi2(map_.phi_1(d3)));
+                    d4 = map_.phi_1(map_.phi2(map_.phi_1(d4)));
+
                 }
-                d4 = map_.phi_1(map_.phi2(map_.phi_1(d4)));
             }
-        }
-        else
-        {
-            Dart d_courant = couche_actu.indic_volumes_[0];
-            Dart d2 = map_.phi<12>(d_courant);
-            Dart d3 = map_.phi<112>(d2);
-            Dart d4 = map_.phi<112>(d3);
-
-            for(unsigned int i = 1; i < couche_actu.indic_volumes_.size(); i++)
+            else if(couche_actu.etage_ > 0 && couche_actu.etage_ < nb_appuis_)
             {
-                Dart d1 = couche_actu.indic_volumes_[i];
+                Dart d_courant = couche_actu.indic_volumes_[0];
+                Dart d2 = map_.phi<12>(d_courant);
+                Dart d3 = map_.phi<112>(d2);
+                Dart d4 = map_.phi<112>(d3);
 
-                // Gestion arête e2
-                Edge e2 = map_.cut_face(d4, map_.phi<21>(d1));
-
-                // Déplacement des darts
-                d4 = map_.phi_1(map_.phi2(map_.phi_1(d4)));
-            }
-        }
-    }
+                int ratio = couche_actu.indic_volumes_.size()/couche_suivante.indic_volumes_.size();
 
 
-
-    //
-    //
-    // Creation des faces
-    //
-    //
-
-
-    for( std::vector<CoucheConcentrique>::iterator it_vol = subdivised_volume_control_.begin(); it_vol < subdivised_volume_control_.end(); ++it_vol)
-    {
-        CoucheConcentrique couche_courante = *it_vol;
-
-        if(couche_courante.etage_ < nb_appuis_)
-        {
-            CoucheConcentrique couche_suivante = *(it_vol + 1); // Aucun risque d'être sur un nouveau quartier
-
-            // avec iterateur
-            for(std::vector<Dart>::iterator it_dart = couche_courante.indic_volumes_.begin() + 1 ; it_dart < couche_courante.indic_volumes_.end(); ++it_dart)
-            {
-                bool check_last_binary_dart = true;
-
-                //en choisir qu'un sur 2
-                Dart d_courant;
-                if(couche_courante.etage_ > 0)
+                for(unsigned int i = 1; i < couche_actu.indic_volumes_.size(); i++)
                 {
-                    if(couche_suivante.indic_volumes_.size() < couche_courante.indic_volumes_.size())
+                    Dart d1 = couche_actu.indic_volumes_[i];
+
+                    // Gestion arête e1
+                    if(i%ratio == 0)
+                        Edge e1 = map_.cut_face(d1,map_.phi<21>(d2));
+
+                    // Gestion arête e2
+                    Edge e2 = map_.cut_face(d4, map_.phi<21>(d1));
+
+                    // Gestion arête e4
+                    if(i%ratio == 0)
+                        Edge e4 = map_.cut_face(d3, map_.phi<21>(d4));
+
+                    // Déplacement des darts
+                    if(i%ratio == 0)
                     {
-                        // lorsqu'on est sur le dernier dart, il ne faut rien faire dans ce cas là =>pas créer de volume
+                        d2 = map_.phi_1(d2);
+                        d3 = map_.phi_1(map_.phi2(map_.phi_1(d3)));
+                    }
+                    d4 = map_.phi_1(map_.phi2(map_.phi_1(d4)));
+                }
+            }
+            else
+            {
+                Dart d_courant = couche_actu.indic_volumes_[0];
+                Dart d2 = map_.phi<12>(d_courant);
+                Dart d3 = map_.phi<112>(d2);
+                Dart d4 = map_.phi<112>(d3);
 
-                        it_dart++; // voici le correctif
-                        if(it_dart < couche_courante.indic_volumes_.end())
-                            d_courant = *it_dart; // Le nb de fois qu'il faudra pour atteindre le bon point => pb, car on refait la même chose à l'itération suivant
+                for(unsigned int i = 1; i < couche_actu.indic_volumes_.size(); i++)
+                {
+                    Dart d1 = couche_actu.indic_volumes_[i];
+
+                    // Gestion arête e2
+                    Edge e2 = map_.cut_face(d4, map_.phi<21>(d1));
+
+                    // Déplacement des darts
+                    d4 = map_.phi_1(map_.phi2(map_.phi_1(d4)));
+                }
+            }
+        }
+
+
+
+        //
+        //
+        // Creation des faces
+        //
+        //
+
+
+        for( std::vector<CoucheConcentrique>::iterator it_vol = Bt.subdivised_volume_control_.begin(); it_vol < Bt.subdivised_volume_control_.end(); ++it_vol)
+        {
+            CoucheConcentrique couche_courante = *it_vol;
+
+            if(couche_courante.etage_ < nb_appuis_)
+            {
+                CoucheConcentrique couche_suivante = *(it_vol + 1); // Aucun risque d'être sur un nouveau quartier
+
+                // avec iterateur
+                for(std::vector<Dart>::iterator it_dart = couche_courante.indic_volumes_.begin() + 1 ; it_dart < couche_courante.indic_volumes_.end(); ++it_dart)
+                {
+                    bool check_last_binary_dart = true;
+
+                    //en choisir qu'un sur 2
+                    Dart d_courant;
+                    if(couche_courante.etage_ > 0)
+                    {
+                        if(couche_suivante.indic_volumes_.size() < couche_courante.indic_volumes_.size())
+                        {
+                            // lorsqu'on est sur le dernier dart, il ne faut rien faire dans ce cas là =>pas créer de volume
+
+                            it_dart++; // voici le correctif
+                            if(it_dart < couche_courante.indic_volumes_.end())
+                                d_courant = *it_dart; // Le nb de fois qu'il faudra pour atteindre le bon point => pb, car on refait la même chose à l'itération suivant
+                            else
+                                check_last_binary_dart = false;
+
+                        }
                         else
-                            check_last_binary_dart = false;
-
+                            d_courant = *it_dart; // ici c'est 0 fois car on a autant de point d'une couche à l'autre
                     }
                     else
-                        d_courant = *it_dart; // ici c'est 0 fois car on a autant de point d'une couche à l'autre
-                }
-                else
-                    d_courant = *it_dart; // ok
+                        d_courant = *it_dart; // ok
 
-                if(check_last_binary_dart)
-                {
-                    Dart d1 = map_.phi<21>(d_courant);
-                    Dart d4 = map_.phi<121>(d1);
-                    Dart d3 = map_.phi<121>(d4);
-                    Dart d2 = map_.phi<121>(d3);
+                    if(check_last_binary_dart)
+                    {
+                        Dart d1 = map_.phi<21>(d_courant);
+                        Dart d4 = map_.phi<121>(d1);
+                        Dart d3 = map_.phi<121>(d4);
+                        Dart d2 = map_.phi<121>(d3);
 
-                    Face f = map_.cut_volume({d4, d3, d2, d1});
+                        Face f = map_.cut_volume({d4, d3, d2, d1});
+                    }
                 }
             }
         }
+        controls_[count] = Bt;
+        count++;
     }
 }
 
 void topo::SubdivisionConcentrique()
 {
+    for(BranchTopo Bt : controls_)
+    {
+
+        unsigned int k = 0;
+        unsigned int j = 0;
+        std::vector<Dart> nouv_vertex;
+        std::vector<Edge> face_limits;
+
+
+        //
+        // Ajout des vertices de la subdivision
+        //
+
+        for(Dart d : Bt.volume_control_)
+        {
+            Dart v = map_.cut_edge(Edge(d)).dart;
+            nouv_vertex.push_back(v);
+            //vertex_position_[Vertex(v)] = (vertex_position_[Vertex(map_.phi1(v))]*(1 - MASK_SUBDIV_RAY) + vertex_position_[Vertex(map_.phi_1(v))]*MASK_SUBDIV_RAY);
+        }
+
+        // dernière arti
+        for(unsigned int i = 0; i < TYPE_PRIMITIVE; i++)
+        {
+            Dart last_seg = map_.phi2(map_.phi1(map_.phi1(map_.phi2(Bt.volume_control_[Bt.volume_control_.size() - TYPE_PRIMITIVE + i]))));
+            Vertex v = map_.cut_edge(Edge(last_seg));
+            Dart dv = v.dart;
+            nouv_vertex.push_back(dv);
+
+            //vertex_position_[v] = (vertex_position_[Vertex(map_.phi_1(dv))]*(1 - MASK_SUBDIV_RAY) + vertex_position_[Vertex(map_.phi1(dv))]*MASK_SUBDIV_RAY);
+
+        }
+
+
+        //
+        // Ajout des arêtes de la subdivision à l'aide des vertices rajouté à l'étape précédente
+        //
+
+
+        for(Dart d : Bt.volume_control_)
+        {
+            Dart v_int_bottom = map_.phi_1(map_.phi_1(map_.phi2(nouv_vertex[k + j*TYPE_PRIMITIVE])));
+            Dart v_int_top = map_.phi1(map_.phi2(nouv_vertex[k + j*TYPE_PRIMITIVE]));
+            face_limits.push_back(map_.cut_face(v_int_top, v_int_bottom));
+
+            if(k + 1 == TYPE_PRIMITIVE )
+            {
+                Dart v_int_side = map_.phi<2321>(nouv_vertex[j*TYPE_PRIMITIVE]);
+                face_limits.push_back(map_.cut_face(nouv_vertex[k + j*TYPE_PRIMITIVE], v_int_side)); // On coupe la face triangulaire du dernier volume autour de l'articulation
+                k=0;
+                j++;
+            }
+            else
+            {
+                Dart v_int_side = map_.phi<2321>(nouv_vertex[k + 1 + j*TYPE_PRIMITIVE]);
+                face_limits.push_back(map_.cut_face(nouv_vertex[k + j*TYPE_PRIMITIVE], v_int_side)); // On coupe une face triangulaire
+                k++;
+            }
+        }
+
+        // dernière arti
+        for(unsigned int i = 0; i < TYPE_PRIMITIVE; i++)
+        {
+            if(i + 1 == TYPE_PRIMITIVE )
+            {
+                Dart v_int_side = map_.phi<2321>(nouv_vertex[j*TYPE_PRIMITIVE]);
+                face_limits.push_back(map_.cut_face(nouv_vertex[j*TYPE_PRIMITIVE + i], v_int_side)); // on coupe une face triangulaire du dernier volume
+            }
+            else
+            {
+                Dart v_int_side = map_.phi<2321>(nouv_vertex[j*TYPE_PRIMITIVE + i + 1]);
+                face_limits.push_back(map_.cut_face(nouv_vertex[j*TYPE_PRIMITIVE + i], v_int_side)); // on coupe une face triangulaire des volumes autour de la dernière arti
+            }
+        }
+
+
+
+        //
+        // Ajout des faces de la subdivision à l'aide des arêtes rajouté à l'étape précédente
+        //
+
+        for(Dart d : Bt.volume_control_)
+        {
+
+            //
+            // version avec les indices (incomplète)
+            //
+
+
+
+            //
+            // version avec les manipulation phi<>
+            //
+
+            std::vector<Dart> face_int;
+
+            Dart dd = map_.phi1(d);
+            face_int.push_back(dd);
+            dd = map_.phi<121>(dd);
+            face_int.push_back(dd);
+            dd = map_.phi<121>(dd);
+            face_int.push_back(dd);
+            dd = map_.phi<121>(dd);
+            face_int.push_back(dd);
+
+            Face f = map_.cut_volume(face_int);
+
+        }
+
+    /*
     unsigned int k = 0;
     unsigned int j = 0;
     std::vector<Dart> nouv_vertex;
@@ -1175,7 +1621,7 @@ void topo::SubdivisionConcentrique()
     std::cout << " avant les cutfaces" << std::endl;
 
 
-    /*
+
     for(Dart d : volume_control_)
     {
         std::cout << "combien d'iteration? " << j*TYPE_PRIMITIVE + k << std::endl;
@@ -1251,8 +1697,8 @@ void topo::SubdivisionConcentrique()
     map_.foreach_cell([&] (Volume v){ volume_count++; }); // affichage du nombre de volumes
     std::cout << " Il y a " << volume_count << " Volume(s)" << std::endl;
     */
-    GetCouchesConcentriques();//
-    InterpolationConcentrique(); // Calcul des coordonées des vertices ajouté
+
+    }
 }
 
 

@@ -125,7 +125,7 @@ Squelette::Squelette(const std::string& filename)
         branche.SubdiDirectionT(COURBURE_MAX, TYPE_PRIMITIVE);
         for(Vec3 v : branche.pos_vertices_)
             positions_.push_back(v);
-        longueurs_.push_back(branche.pos_vertices_.size());
+        //longueurs_.push_back((branche.articulations_.size()-1)*TYPE_PRIMITIVE);
         branches_[k] = branche;
     }
 

@@ -43,13 +43,13 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
         case Qt::Key_Z:
         {
             ma_topo_.UpdateCoordinates();
+            std::cout << "coucou" << std::endl;
             break;
         }
         case Qt::Key_L:
         {
             ma_topo_.SubdivisionCouche(3);
             break;
-
         }
         case Qt::Key_Minus:
         {
@@ -77,7 +77,10 @@ void Viewer::keyPressEvent(QKeyEvent *ev)
             break;
         case Qt::Key_C:
         {
+            ma_topo_.nb_appuis_++;
             ma_topo_.SubdivisionConcentrique();
+            ma_topo_.InterpolationConcentrique();
+            ma_topo_.GetCouchesConcentriques();
             break;
         }
 

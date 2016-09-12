@@ -11,9 +11,9 @@
 #include <cgogn/io/volume_import.h>
 
 #include "tetgen.h"
-#include "coucheconcentrique.h"
 #include "squelette.h"
 #include "tetgen_structure_io.h"
+#include "branchtopo.h"
 
 
 using Map3 = cgogn::CMap3<cgogn::DefaultMapTraits>;
@@ -59,6 +59,7 @@ public:
     Map3 map_;
     VertexAttribute<Vec3> vertex_position_;
     VertexAttribute<Vec3> vertex_normal_;
+    VertexAttribute<int> vertex_appartenance_;
 
     int nb_appuis_;
     int indice_repartition_;
@@ -66,9 +67,10 @@ public:
 private:
 
     void MakeFromSkeleton(const Squelette&, const unsigned int&);
-    void generate_tetgen(const std::string&);
+    void Generate_tetgen(const std::string&, int);
     void MakeIntersection(std::vector<TriangleGeo>, std::vector<Vec3> sommets_intersection);
     void MakeBranch(const std::vector<Vec3>&, const unsigned int&);
+    //void Sewbranches()
 
     std::unique_ptr<tetgenio> export_tetgen();
 
@@ -77,8 +79,7 @@ private:
     Map3 map3branch_;
     Map2 map2_;
 
-    std::vector<CoucheConcentrique> subdivised_volume_control_;
-    std::vector<Dart> volume_control_;
+    std::vector<BranchTopo> controls_;
     std::vector<int> save_pos_;
 
     VertexAttribute2<Vec3> vertex2_position_;

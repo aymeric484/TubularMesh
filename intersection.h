@@ -22,11 +22,12 @@ private :
     // void ComputeConvexhull(std::vector<Vec3>)
     // Il faudrait récupérer une connectivité à partir de cette enveloppe convexe
 
-    unsigned int indicateur_;
+
 
 
 public:
 
+    unsigned int indicateur_;
     //
     // Vec4 en attribut est obligatoire => centre théorique de l'intersection => ce même centre pourrait être le point externe des branches
     Vec4 centre_;

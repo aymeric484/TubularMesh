@@ -7,6 +7,13 @@ Squelette::Squelette(const std::string& filename)
     std::ifstream fp(filename.c_str(), std::ios::in); // 1er argu => getpath && 2eme argu => read()
     std::string line;
 
+    std::cout << "instabilité du parseur squelette(filename)" << std::endl;
+
+    if(!fp.good())
+    {
+        std::cout << "probleme d'ouverture du fichier" << std::endl;
+    }
+
     Vec4 arti_inter;
 
     unsigned int word_pos = 0;
@@ -191,8 +198,9 @@ Squelette::Squelette(const std::string& filename)
 
     for(int j = 0; j < intersections_.size(); j++)
     {
+        std::vector<int> code_cas_particulier;
         Intersection inter = intersections_[j];
-        inter.ComputeConnectivity9();
+        code_cas_particulier = inter.ComputeConnectivity9();
         intersections_[j] = inter;
     }
 
@@ -209,13 +217,7 @@ Squelette::Squelette(const std::string& filename)
 
 
 
-    //
-    // Obtenir la connectivité => se code pourrait-il être fait ailleurs?
-    //
 
-    /*
-    Intersection inter = intersections_[0];
-    inter.ComputeConnectivity3();*/
 }
 
 

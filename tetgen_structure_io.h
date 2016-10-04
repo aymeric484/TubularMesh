@@ -31,29 +31,47 @@
 #include "tetgen.h"
 
 
-
-class TetgenStructureVolumeImport : public cgogn::io::VolumeImport<cgogn::CMap3<cgogn::DefaultMapTraits>::MapTraits>
+class TetgenStructureVolumeImport : public cgogn::io::VolumeImport<cgogn::CMap3<cgogn::DefaultMapTraits>::MapTraits, Eigen::Vector3d>
 {
 public:
-    using Inherit = cgogn::io::VolumeImport<cgogn::CMap3<cgogn::DefaultMapTraits>::MapTraits>;
-	using Self = TetgenStructureVolumeImport;
+    using Inherit = cgogn::io::VolumeImport<cgogn::CMap3<cgogn::DefaultMapTraits>::MapTraits, Eigen::Vector3d>;
+    using Self = TetgenStructureVolumeImport;
     using Scalar = cgogn::geometry::vector_traits<Eigen::Vector3d>::Scalar;
-	template <typename T>
-	using ChunkArray = typename Inherit::template ChunkArray<T>;
-	using tetgenio = tetgen::tetgenio;
+    template <typename T>
+    using ChunkArray = typename Inherit::template ChunkArray<T>;
+    using tetgenio = tetgen::tetgenio;
 
-	explicit TetgenStructureVolumeImport(tetgenio * tetgen_output);
-	CGOGN_NOT_COPYABLE_NOR_MOVABLE(TetgenStructureVolumeImport);
+    explicit TetgenStructureVolumeImport(tetgenio * tetgen_output);
+    CGOGN_NOT_COPYABLE_NOR_MOVABLE(TetgenStructureVolumeImport);
 
-    // Variable qui vient d'être ajouté pour récupérer la position
-    ChunkArray<Eigen::Vector3d>* cpy_pos_ = NULL;
-
-
-protected:
-	virtual bool import_file_impl(const std::string& /*filename*/) override;
+    bool import_tetgen_structure();
 
 private:
-	tetgenio* volume_;
+    tetgenio* volume_;
 };
+
+//class TetgenStructureVolumeImport : public cgogn::io::VolumeImport<cgogn::CMap3<cgogn::DefaultMapTraits>::MapTraits>
+//{
+//public:
+//    using Inherit = cgogn::io::VolumeImport<cgogn::CMap3<cgogn::DefaultMapTraits>::MapTraits>;
+//	using Self = TetgenStructureVolumeImport;
+//    using Scalar = cgogn::geometry::vector_traits<Eigen::Vector3d>::Scalar;
+//	template <typename T>
+//	using ChunkArray = typename Inherit::template ChunkArray<T>;
+//	using tetgenio = tetgen::tetgenio;
+
+//	explicit TetgenStructureVolumeImport(tetgenio * tetgen_output);
+//	CGOGN_NOT_COPYABLE_NOR_MOVABLE(TetgenStructureVolumeImport);
+
+//    // Variable qui vient d'être ajouté pour récupérer la position
+//    ChunkArray<Eigen::Vector3d>* cpy_pos_ = NULL;
+
+
+//protected:
+//    virtual bool import_file_impl(const std::string& /*filename*/) override;
+
+//private:
+//	tetgenio* volume_;
+//};
 
 #endif

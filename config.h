@@ -3,7 +3,7 @@
 
 
 #define Pi  3.14159265359
-#define DISTANCE_MIN 0.20
+#define DISTANCE_MIN 0.2
 #define COURBURE_MAX 0.20 // diverge en dessous de 0.0004 => probablement des NaN dans les calculs de courbures => ne viendrait pas de l'algo
 
 #define TYPE_PRIMITIVE 6

@@ -10,6 +10,9 @@
 #include <cgogn/io/tetgen_io.h>
 #include <cgogn/io/volume_import.h>
 
+#include <cgogn/geometry/algos/normal.h>
+
+
 #include "tetgen.h"
 #include "squelette.h"
 #include "tetgen_structure_io.h"
@@ -20,6 +23,7 @@ using Map3 = cgogn::CMap3<cgogn::DefaultMapTraits>;
 using Map2 = cgogn::CMap2<cgogn::DefaultMapTraits>;
 
 using Vertex = typename Map3::Vertex;
+using Vertex32 = typename Map3::Vertex2;
 using Vertex2 = typename Map2::Vertex;
 using Edge = typename Map3::Edge;
 using Face = typename Map3::Face;
@@ -39,6 +43,9 @@ template <typename T1>
 using VertexAttribute = Map3::VertexAttribute<T1>;
 template <typename T2>
 using VertexAttribute2 = Map2::VertexAttribute<T2>;
+template <typename T3>
+using Vertex2Attribute = Map3::Attribute<T3, Map3::Vertex2::ORBIT>;
+
 using MapBuilder = cgogn::CMap3Builder_T<Map3::MapTraits>;
 using MapBuilder2 = cgogn::CMap2Builder_T<Map2::MapTraits>;
 
@@ -58,11 +65,23 @@ public:
 
     Map3 map_;
     VertexAttribute<Vec3> vertex_position_;
+    VertexAttribute<Vec3> vertex_position_bis_;
+    VertexAttribute<Vec3> vertex_position_ter_;
+    VertexAttribute<Vec3> vertex_inter_position_;
+
     VertexAttribute<Vec3> vertex_normal_;
+    VertexAttribute<Vec3> vertex_normal_bis_;
     VertexAttribute<int> vertex_appartenance_;
+    VertexAttribute<int> vertex_appartenance_bis_;
+
+
+    //VertexAttribute<int> vertex_appartenance_;
 
     int nb_appuis_;
     int indice_repartition_;
+    VertexAttribute2<Vec3> vertex2_position_;
+
+
 
 private:
 
@@ -70,6 +89,8 @@ private:
     void Generate_tetgen(const std::string&, int);
     void MakeIntersection(std::vector<TriangleGeo>, std::vector<Vec3> sommets_intersection);
     void MakeBranch(const std::vector<Vec3>&, const unsigned int&);
+    void TestMergeSew();
+    void TestSimpleSew();
     //void Sewbranches()
 
     std::unique_ptr<tetgenio> export_tetgen();
@@ -82,8 +103,8 @@ private:
     std::vector<BranchTopo> controls_;
     std::vector<int> save_pos_;
 
-    VertexAttribute2<Vec3> vertex2_position_;
-    VertexAttribute<Vec3> vertex_position2_;
+
+    //VertexAttribute<Vec3> vertex_position2_;
 
     cgogn::CellCache<Map3> cell_cache_prec_;
 

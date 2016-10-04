@@ -3,19 +3,227 @@
 topo::topo(const Squelette& mon_squelette, const unsigned int& primitive) :
     map_(),
     map2_(),
+    map3inter_(),
     vertex_position_(),
+    vertex_position_ter_(),
+    vertex_position_bis_(),
     vertex_normal_(),
+    vertex_inter_position_(),
+    vertex_appartenance_(),
     cell_cache_prec_(map_)
 {
     nb_appuis_ = 0;
     indice_repartition_ = 0;
+
+    //
+    // Appel principal :
+    //
+
     MakeFromSkeleton(mon_squelette, primitive);
+
+
+    //
+    // Différents TESTS :
+    //
+
+    // Coudre après fusion deux volume simples
+    //TestMergeSew();
+
+    // Coudre simplement sans fusion
+    //TestSimpleSew();
+}
+
+void topo::TestSimpleSew()
+{
+    //
+    // Création tétra_1 et tétra_2
+
+    MapBuilder mbuilding(map_);
+    Dart d1 = mbuilding.add_pyramid_topo(3);
+    Dart d2 = mbuilding.add_pyramid_topo(3);
+    mbuilding.close_map();
+    vertex_position_ = map_.add_attribute<Vec3, Vertex::ORBIT>("position");
+
+    //
+    // Affectation tétra_1
+
+    Vec3 v11 = {0, 0, 0};
+    Vec3 v12 = {0, 1, 0};
+    Vec3 v13 = {1, 0, 0};
+    Vec3 v14 = {0, 0, 1};
+
+    vertex_position_[Vertex(d1)] = v11;
+    vertex_position_[Vertex(map_.phi1(d1))] = v12;
+    vertex_position_[Vertex(map_.phi<11>(d1))] = v13;
+    vertex_position_[Vertex(map_.phi<211>(d1))] = v14;
+
+    //
+    // Affectation tétra_2
+
+    Vec3 v21 = {1, 1, -2};
+    Vec3 v22 = {1, 2, -2};
+    Vec3 v23 = {2, 1, -2};
+    Vec3 v24 = {1, 1, -3};
+
+    vertex_position_[Vertex(d2)] = v21;
+    vertex_position_[Vertex(map_.phi1(d2))] = v22;
+    vertex_position_[Vertex(map_.phi<11>(d2))] = v23;
+    vertex_position_[Vertex(map_.phi<211>(d2))] = v24;
+
+    //
+    // Fusion des 2 tétras
+
+    cgogn_assert(map_.check_map_integrity());
+    map_.sew_volumes(Face(d1), Face(d2));
+
+}
+
+void topo::TestMergeSew()
+{
+
+    //
+    // Création prisme 1 et 2
+
+    MapBuilder mbuilding(map_);
+    Dart d1 = mbuilding.add_prism_topo(3);
+    Dart d2 = mbuilding.add_prism_topo(3);
+    mbuilding.sew_volumes(map_.phi2(d2), map_.phi<12>(d1));
+    mbuilding.close_map();
+
+    vertex_position_ = map_.add_attribute<Vec3, Vertex::ORBIT>("position");
+    vertex_appartenance_ = map_.add_attribute<int, Vertex::ORBIT>("appartenance");
+
+    Vec3 v11 = {0, 0, 0};
+    Vec3 v12 = {1, 0, 0};
+    Vec3 v13 = {0, 1, 0};
+    Vec3 v14 = {1, 1, 0};
+    Vec3 v15 = {0, 0, -1};
+    Vec3 v16 = {1, 0, -1};
+    Vec3 v17 = {0, 1, -1};
+    Vec3 v18 = {1, 1, -1};
+
+    vertex_position_[Vertex(d1)] = v11;
+    vertex_position_[Vertex(map_.phi1(d1))] = v12;
+    vertex_position_[Vertex(map_.phi_1(d1))] = v13;
+    vertex_position_[Vertex(map_.phi<21121>(d1))] = v15;
+    vertex_position_[Vertex(map_.phi<211211>(d1))] = v17;
+    vertex_position_[Vertex(map_.phi<2112111>(d1))] = v16;
+    vertex_position_[Vertex(map_.phi_1(d2))] = v14;
+    vertex_position_[Vertex(map_.phi<12112>(d2))] = v18;
+
+    cgogn_assert(map_.check_map_integrity());
+
+
+    //
+    // Création tétra 2
+
+    MapBuilder mbuilding2(map3inter_);
+    Dart d_bis = mbuilding2.add_pyramid_topo(3);
+    mbuilding2.close_map();
+
+    vertex_position_ter_ = map3inter_.add_attribute<Vec3, Vertex::ORBIT>("position");
+    vertex_appartenance_bis_ = map3inter_.add_attribute<int, Vertex::ORBIT>("appartenance");
+
+    Vec3 v21 = {0, 0, -1}; // équivaut à v15
+    Vec3 v22 = {0, 1, -1}; // équivaut à v17
+    Vec3 v23 = {1, 0, -1}; // équivaut à v16
+    Vec3 v24 = {0, 0, -2}; // nouveau => équivaut à rien
+
+    vertex_position_ter_[Vertex(d_bis)] = v21;
+    vertex_position_ter_[Vertex(map3inter_.phi1(d_bis))] = v23;
+    vertex_position_ter_[Vertex(map3inter_.phi<11>(d_bis))] = v22;
+    vertex_position_ter_[Vertex(map3inter_.phi<211>(d_bis))] = v24;
+
+    map3inter_.foreach_cell([&] (Vertex v){vertex_appartenance_bis_[v] = 1;});
+
+    //
+    // Création prisme 2
+
+    /*
+    MapBuilder mbuilding2(map3inter_);
+    Dart d_bis = mbuilding2.add_prism_topo(3);
+    mbuilding2.close_map();
+
+    vertex_position_ter_ = map3inter_.add_attribute<Vec3, Vertex::ORBIT>("position");
+    vertex_appartenance_bis_ = map3inter_.add_attribute<int, Vertex::ORBIT>("appartenance");
+
+    Vec3 v21 = {0, 0, -1};
+    Vec3 v22 = {0, 1, -1};
+    Vec3 v23 = {1, 0, -1};
+    Vec3 v24 = {0, 0, -2};
+    Vec3 v25 = {0, 1, -2};
+    Vec3 v26 = {1, 0, -2};
+
+    vertex_position_ter_[Vertex(d_bis)] = v21;
+    vertex_position_ter_[Vertex(map3inter_.phi1(d_bis))] = v22;
+    vertex_position_ter_[Vertex(map3inter_.phi<11>(d_bis))] = v23;
+    vertex_position_ter_[Vertex(map3inter_.phi<21121>(d_bis))] = v24;
+    vertex_position_ter_[Vertex(map3inter_.phi<211211>(d_bis))] = v26;
+    vertex_position_ter_[Vertex(map3inter_.phi<2112111>(d_bis))] = v25;
+
+    map3inter_.foreach_cell([&] (Vertex v){vertex_appartenance_bis_[v] = 1;});*/
+
+
+    //
+    // Fusion des 2 volumes
+
+    cgogn_assert(map3inter_.check_map_integrity());
+    Map3::DartMarker dm(map3inter_);
+    map_.merge(map3inter_, dm);
+    Dart d3,d4;
+    d3 = map_.phi<21121>(d1);
+    Vertex v_ref;
+    double dist_ref = 100;
+
+    //
+    // Localisation des Vertices correspondants
+
+    map_.foreach_cell([&] (Vertex v){
+
+        double dist = (vertex_position_[v] - vertex_position_[Vertex(d3)]).norm();
+        if(dist < dist_ref)
+        {
+            dist_ref = dist;
+            v_ref = v;
+        }
+
+    }, [&] (Vertex v){
+        return (vertex_appartenance_[v] == 1);
+    });
+
+    //
+    // Trouver le bon dart
+
+    int count = 0;
+
+    map_.foreach_dart_of_orbit(v_ref, [&] (Dart d_courant){
+
+        Vec3 pos_test = vertex_position_[Vertex(map_.phi1(d_courant))];
+        Vec3 pos_ref = vertex_position_[Vertex(map_.phi<2112>(d1))];
+        bool testX = (((pos_test[0] - pos_ref[0])*(pos_test[0] - pos_ref[0])) < 0.0001);
+        bool testY = (((pos_test[1] - pos_ref[1])*(pos_test[1] - pos_ref[1])) < 0.0001);
+        bool testZ = (((pos_test[2] - pos_ref[2])*(pos_test[2] - pos_ref[2])) < 0.0001);
+        if(testX && testY && testZ && map_.is_boundary(map_.phi3(d_courant)))
+        {
+            count++;
+            d4 = d_courant;
+        }
+
+
+    });
+    std::cout << "count : " << count << std::endl;
+
+    cgogn_assert(map_.check_map_integrity());
+
+    int incre = 0;
+    map_.foreach_cell([&] (Volume v){
+        incre++;});
+    std::cout << "Nb de volumes : " << incre << std::endl;
+    map_.sew_volumes(Face(d4), Face(map_.phi<2112>(d1)));
 }
 
 std::unique_ptr<tetgenio> topo::export_tetgen()
 {
-    // Passer une variable en copie
-
     std::unique_ptr<tetgenio> output = cgogn::make_unique<tetgenio>();
 
     // 0-based indexing
@@ -74,9 +282,15 @@ void topo::Generate_tetgen(const std::string& tetgen_args, int count)
 
     TetgenStructureVolumeImport tetgen_import(&tetgen_output);
 
-    tetgen_import.import_file("");
-
     tetgen_import.create_map(map3inter_);
+
+    int count_boundary_vertices = 0;
+    map3inter_.foreach_cell([&] (Vertex v){
+            if(map3inter_.is_incident_to_boundary(v))
+                count_boundary_vertices++;
+    });
+    std::cout << "Nb de sommets du bord : " << count_boundary_vertices << std::endl;
+
 
     Map3::VertexAttribute<int> inter_code = map3inter_.add_attribute<int, Vertex::ORBIT>("appartenance");
 
@@ -155,22 +369,30 @@ void topo::MakeIntersection(std::vector<TriangleGeo> triangles, std::vector<Vec3
     for(TriangleGeo T_test : triangles)
     {
         Dart d_test = dart_faces[nb_courant];
-        int a = T_test.ind1_;
-        int b = T_test.ind2_;
-        int c = T_test.ind3_;
+        int a = T_test.connectivity_[0];
+        int b = T_test.connectivity_[1];
+        int c = T_test.connectivity_[2];
+        std::cout << "triangle de reférence : " << a << "/ " << b << "/ " << c << std::endl;
         int count = 0;
-
+        int cond_valide = 0;
+        int Nb_voisin = 0;
         for(TriangleGeo T_courant : triangles)
         {
             //
             // Déterminer si les triangles sont voisins
             bool voisin = false;
-            bool sommet1 = T_courant.ind1_ == a || T_courant.ind1_ == b || T_courant.ind1_ == c;
-            bool sommet2 = T_courant.ind2_ == a || T_courant.ind2_ == b || T_courant.ind2_ == c;
-            bool sommet3 = T_courant.ind3_ == a || T_courant.ind3_ == b || T_courant.ind3_ == c;
+            bool sommet1 = (T_courant.connectivity_[0] == a) || (T_courant.connectivity_[1] == a) || (T_courant.connectivity_[2] == a);
+            bool sommet2 = (T_courant.connectivity_[0] == b) || (T_courant.connectivity_[1] == b) || (T_courant.connectivity_[2] == b);
+            bool sommet3 = (T_courant.connectivity_[0] == c) || (T_courant.connectivity_[1] == c) || (T_courant.connectivity_[2] == c);
 
-            if((sommet1 && sommet2) || (sommet3 && sommet1) || (sommet3 && sommet2))
+            std::cout << "triangle à comparer : " << T_courant.connectivity_[0] << "/ " << T_courant.connectivity_[1] << "/ " << T_courant.connectivity_[2] << std::endl;
+
+            if((sommet1 && sommet2 && !sommet3) || (sommet3 && sommet1 && !sommet2) || (sommet3 && sommet2 && !sommet1))
+            {
                 voisin = true;
+                Nb_voisin++;
+                std::cout << " condition OK " << std::endl;
+            }
 
             //
             // Si ils sont voisins, alors créer la face et la coller sur la bonne arête
@@ -179,60 +401,236 @@ void topo::MakeIntersection(std::vector<TriangleGeo> triangles, std::vector<Vec3
                 // On accède à la face
                 Dart d_courant = dart_faces[count];
 
+                //
                 // Puis test pour le sewing : Toute les possibilités orientées y sont représentés
+                //
+
+                //
                 // test à partir du premier sommet
-                if(T_courant.ind1_ == a)
+
+                // Pour ce sommet équivalent à "a"
+                if(T_courant.connectivity_[0] == a)
                 {
-                    if(T_courant.ind2_ = c)
+                    if(T_courant.connectivity_[1] == c)
                     {
                         d_courant = d_courant;
-                        if(map2_.phi2(d_courant) != d_courant && map2_.phi2(map2_.phi_1(d_test)) != map2_.phi_1(d_test))
+                        if(map2_.phi2(d_courant) == d_courant && map2_.phi2(map2_.phi_1(d_test)) == map2_.phi_1(d_test))
+                        {
                             mbuild2.phi2_sew(d_courant, map2_.phi_1(d_test));
+                            cond_valide++;
+                        }
                     }
-                    if(T_courant.ind3_ == b)
+                    if(T_courant.connectivity_[2] == b)
                     {
                         d_courant = map2_.phi_1(d_courant);
-                        if(map2_.phi2(d_courant) != d_courant && map2_.phi2(d_test) != d_test)
+                        if(map2_.phi2(d_courant) == d_courant && map2_.phi2(d_test) == d_test)
+                        {
                             mbuild2.phi2_sew(d_courant, d_test);
+                            cond_valide++;
+                        }
                     }
                 }
+
+                // Pour ce sommet équivalent à "b"
+                if(T_courant.connectivity_[0] == b)
+                {
+                    if(T_courant.connectivity_[1] == a)
+                    {
+                        d_courant = d_courant;
+                        if(map2_.phi2(d_courant) == d_courant && map2_.phi2(d_test) == d_test)
+                        {
+                            mbuild2.phi2_sew(d_courant, d_test);
+                            cond_valide++;
+                        }
+                    }
+                    if(T_courant.connectivity_[2] == c)
+                    {
+                        d_courant = map2_.phi_1(d_courant);
+                        if(map2_.phi2(d_courant) == d_courant && map2_.phi2(map2_.phi1(d_test)) == map2_.phi1(d_test))
+                        {
+                            mbuild2.phi2_sew(d_courant, map2_.phi1(d_test));
+                            cond_valide++;
+                        }
+                    }
+                }
+
+                // Pour ce sommet équivalent à "c"
+                if(T_courant.connectivity_[0] == c)
+                {
+                    if(T_courant.connectivity_[1] == b)
+                    {
+                        d_courant = d_courant;
+                        if(map2_.phi2(d_courant) == d_courant && map2_.phi2(map2_.phi1(d_test)) == map2_.phi1(d_test))
+                        {
+                            mbuild2.phi2_sew(d_courant, map2_.phi1(d_test));
+                            cond_valide++;
+                        }
+                    }
+                    if(T_courant.connectivity_[2] == a)
+                    {
+                        d_courant = map2_.phi_1(d_courant);
+                        if(map2_.phi2(d_courant) == d_courant && map2_.phi2(map2_.phi_1(d_test)) == map2_.phi_1(d_test))
+                        {
+                            mbuild2.phi2_sew(d_courant, d_test);
+                            cond_valide++;
+                        }
+                    }
+                }
+
+                //
                 // test à partir du deuxième sommet
-                if(T_courant.ind2_ == b)
+
+                // Pour ce sommet équivalent à "a"
+                if(T_courant.connectivity_[1] == a)
                 {
-                    if(T_courant.ind1_ = c)
+                    if(T_courant.connectivity_[0] == b)
                     {
                         d_courant = d_courant;
-                        if(map2_.phi2(d_courant) != d_courant && map2_.phi2(map2_.phi1(d_test)) != map2_.phi1(d_test))
-                            mbuild2.phi2_sew(d_courant, map2_.phi1(d_test));
+                        if(map2_.phi2(d_courant) == d_courant && map2_.phi2(d_test) == d_test)
+                        {
+                            mbuild2.phi2_sew(d_courant, d_test);
+                            cond_valide++;
+                        }
                     }
-                    if(T_courant.ind3_ == a)
+                    if(T_courant.connectivity_[2] == c)
                     {
                         d_courant = map2_.phi1(d_courant);
-                        if(map2_.phi2(d_courant) != d_courant && map2_.phi2(d_test) != d_test)
-                            mbuild2.phi2_sew(d_courant, d_test);
+                        if(map2_.phi2(d_courant) == d_courant && map2_.phi2(map2_.phi_1(d_test)) == map2_.phi_1(d_test))
+                        {
+                            mbuild2.phi2_sew(d_courant, map2_.phi_1(d_test));
+                            cond_valide++;
+                        }
                     }
                 }
-                // test à partir du troisième sommet
-                if(T_courant.ind3_ == c)
+
+                // Pour ce sommet équivalent à "b"
+                if(T_courant.connectivity_[1] == b)
                 {
-                    if(T_courant.ind1_ = b)
+                    if(T_courant.connectivity_[0] == c)
                     {
-                        d_courant = map2_.phi_1(d_courant);
-                        if(map2_.phi2(d_courant) != d_courant && map2_.phi2(map2_.phi1(d_test)) != map2_.phi1(d_test))
+                        d_courant = d_courant;
+                        if(map2_.phi2(d_courant) == d_courant && map2_.phi2(map2_.phi1(d_test)) == map2_.phi1(d_test))
+                        {
                             mbuild2.phi2_sew(d_courant, map2_.phi1(d_test));
+                            cond_valide++;
+                        }
                     }
-                    if(T_courant.ind2_ == a)
+                    if(T_courant.connectivity_[2] == a)
                     {
                         d_courant = map2_.phi1(d_courant);
-                        if(map2_.phi2(d_courant) != d_courant && map2_.phi2(map2_.phi_1(d_test)) != map2_.phi_1(d_test))
+                        if(map2_.phi2(d_courant) == d_courant && map2_.phi2(d_test) == d_test)
+                        {
+                            mbuild2.phi2_sew(d_courant, d_test);
+                            cond_valide++;
+                        }
+                    }
+                }
+
+                // Pour ce sommet équivalent à "c"
+                if(T_courant.connectivity_[1] == c)
+                {
+                    if(T_courant.connectivity_[0] == a)
+                    {
+                        d_courant = d_courant;
+                        if(map2_.phi2(d_courant) == d_courant && map2_.phi2(map2_.phi_1(d_test)) == map2_.phi_1(d_test))
+                        {
                             mbuild2.phi2_sew(d_courant, map2_.phi_1(d_test));
+                            cond_valide++;
+                        }
+                    }
+                    if(T_courant.connectivity_[2] == b)
+                    {
+                        d_courant = map2_.phi1(d_courant);
+                        if(map2_.phi2(d_courant) == d_courant && map2_.phi2(map2_.phi1(d_test)) == map2_.phi1(d_test))
+                        {
+                            mbuild2.phi2_sew(d_courant, map2_.phi1(d_test));
+                            cond_valide++;
+                        }
+                    }
+                }
+
+
+                //
+                // Test à partir du troisième sommet
+
+                // Pour ce sommet équivalent à "a"
+                if(T_courant.connectivity_[2] == a)
+                {
+                    if(T_courant.connectivity_[0] == c)
+                    {
+                        d_courant = map2_.phi_1(d_courant);
+                        if(map2_.phi2(d_courant) == d_courant && map2_.phi2(map2_.phi_1(d_test)) == map2_.phi_1(d_test))
+                        {
+                            mbuild2.phi2_sew(d_courant, map2_.phi_1(d_test));
+                            cond_valide++;
+                        }
+                    }
+                    if(T_courant.connectivity_[1] == b)
+                    {
+                        d_courant = map2_.phi1(d_courant);
+                        if(map2_.phi2(d_courant) == d_courant && map2_.phi2(d_test) == d_test)
+                        {
+                            mbuild2.phi2_sew(d_courant, d_test);
+                            cond_valide++;
+
+                        }
+                    }
+                }
+
+                // Pour ce sommet équivalent à "b"
+                if(T_courant.connectivity_[2] == b)
+                {
+                    if(T_courant.connectivity_[0] == a)
+                    {
+                        d_courant = map2_.phi_1(d_courant);
+                        if(map2_.phi2(d_courant) == d_courant && map2_.phi2(d_test) == d_test)
+                        {
+                            mbuild2.phi2_sew(d_courant, d_test);
+                            cond_valide++;
+                        }
+                    }
+                    if(T_courant.connectivity_[1] == c)
+                    {
+                        d_courant = map2_.phi1(d_courant);
+                        if(map2_.phi2(d_courant) == d_courant && map2_.phi2(map2_.phi1(d_test)) == map2_.phi1(d_test))
+                        {
+                            mbuild2.phi2_sew(d_courant, map2_.phi1(d_test));
+                            cond_valide++;
+
+                        }
+                    }
+                }
+
+                // Pour ce sommet équivalent à "c"
+                if(T_courant.connectivity_[2] == c)
+                {
+                    if(T_courant.connectivity_[0] == b)
+                    {
+                        d_courant = map2_.phi_1(d_courant);
+                        if(map2_.phi2(d_courant) == d_courant && map2_.phi2(map2_.phi1(d_test)) == map2_.phi1(d_test))
+                        {
+                            mbuild2.phi2_sew(d_courant, map2_.phi1(d_test));
+                            cond_valide++;
+                        }
+                    }
+                    if(T_courant.connectivity_[1] == a)
+                    {
+                        d_courant = map2_.phi1(d_courant);
+                        if(map2_.phi2(d_courant) == d_courant && map2_.phi2(map2_.phi_1(d_test)) == map2_.phi_1(d_test))
+                        {
+                            mbuild2.phi2_sew(d_courant, map2_.phi_1(d_test));
+                            cond_valide++;
+                        }
                     }
                 }
             }
             count++;
         }
         nb_courant++;
+        std::cout << " On effectue les coutures : " << cond_valide << std::endl;
+        std::cout << "Nombres de voisin qui devrait valoir 3 : " << Nb_voisin << std::endl;
     }
+
 
     mbuild2.close_map();
 
@@ -240,9 +638,7 @@ void topo::MakeIntersection(std::vector<TriangleGeo> triangles, std::vector<Vec3
 
     vertex2_position_ = map2_.add_attribute<Vec3, Vertex2::ORBIT>("position");
 
-
     // TEST : Pour vérifier que l'on est bien sur une sphère
-
 
     /*int incre = 0;
     for(TriangleGeo T : triangles)
@@ -452,7 +848,7 @@ void topo::MakeBranch(const std::vector<Vec3>& positions, const unsigned int& pr
     map3branch_.check_map_integrity();
 
 
-        /*
+    /*
 
     MapBuilder mbuild(map3branch_);
 
@@ -547,6 +943,7 @@ void topo::MakeBranch(const std::vector<Vec3>& positions, const unsigned int& pr
 
 void topo::MakeFromSkeleton(const Squelette& mon_squelette, const unsigned int& primitives)
 {
+
     MapBuilder mbuild(map_);
     // On parcourt toute les branches et on construit la topologie de chacune via MakeBranch dans une map intermediaire. Puis on merge cette map à notre map3 finale
     for(Branch branche : mon_squelette.branches_)
@@ -558,7 +955,6 @@ void topo::MakeFromSkeleton(const Squelette& mon_squelette, const unsigned int& 
         // creation de nos volumes
         for(int n = primitives ; n < nb_articulation*primitives ; n++)
             Bt.volume_control_.push_back(mbuild.add_prism_topo(3));//construit le prisme et renvoi un dart du prisme d'une des faces triangulaires, rendant un parcourt du prisme possible
-
 
         for(int m = 1 ; m < nb_articulation-1 ; m++)
         {
@@ -597,10 +993,14 @@ void topo::MakeFromSkeleton(const Squelette& mon_squelette, const unsigned int& 
         controls_.push_back(Bt);
     }
 
-    mbuild.close_map(); //reboucle les volumes en bord de map
+    mbuild.close_map(); //reboucle les volumes en bord de map*/
 
-    vertex_normal_ = map_.add_attribute<Vec3, Vertex::ORBIT>("normal");
     vertex_position_ = map_.add_attribute<Vec3, Vertex::ORBIT>("position");
+    vertex_appartenance_ = map_.add_attribute<int, Vertex::ORBIT>("appartenance");
+    vertex_normal_ = map_.add_attribute<Vec3, Vertex::ORBIT>("normal");
+
+    //map_.foreach_cell([&] (Vertex v){ vertex_appartenance_[v] = 0;});
+
 
     // affectation d'un point du prisme triangulaire & du point en commun aux n-prismes (n = primitive)
     int ind_branch = 0;
@@ -644,137 +1044,556 @@ void topo::MakeFromSkeleton(const Squelette& mon_squelette, const unsigned int& 
         ind_branch++;
     }
 
-
+    cgogn_message_assert(map_.topology_container().fragmentation() == 1.0f, "topo has holes");
 
 
     // On parcourt toute les intersection et on construit la topologie 2-Map puis 3-Map de chacune via MakeIntersection dans une map intermediaire. Puis on merge cette map à notre map3 finale
+    // VRAI code
+    // Fusion intersection avec map_
 
     int count = 0;
     for(Intersection inter : mon_squelette.intersections_)
     {
         MakeIntersection(inter.faces_, inter.contours_);
-        Generate_tetgen("pq1.1Y", count);
-        map2_.clear();
-        map_.merge(map3inter_);
-        map3inter_.clear_and_remove_attributes();
+        Map3::DartMarker dm(map_);
+
+        // Merge with Map2
+
+        map_.merge(map2_, dm);
+        Map3::Attribute<Vec3, Vertex32::ORBIT> pos2 = map_.get_attribute<Vec3, Vertex32::ORBIT>("position");
+        map_.foreach_cell([&](Vertex v){
+            vertex_position_[v] = pos2[Vertex32(v.dart)];
+            vertex_appartenance_[v] = count + 1;
+        }, [&] (Vertex v) {return dm.is_marked(v.dart);});
+
+
+        //Merge with Map3inter
+        /*
+        Generate_tetgen("pq1.1a0.01Y", count);
+        map_.merge(map3inter_, dm);
+        map3inter_.clear_and_remove_attributes();*/
+
+        map2_.clear_and_remove_attributes();
+
         count++;
     }
 
-    vertex_appartenance_ = map_.template get_attribute<int, Map3::Vertex::ORBIT>("appartenance");
+
+    //
+    // TEST => On va faire le Dart Match making et les tests correspondants sur les deux MAP3 distinctes
+    //
+    //vertex_inter_position_ = map3inter_.get_attribute<Vec3, Vertex::ORBIT>("position");
+
+    /*
+    Intersection inter = mon_squelette.intersections_[0];
+    MakeIntersection(inter.faces_, inter.contours_);
+    Generate_tetgen("pq1.1a0.01Y", 0);
+    vertex_inter_position_ = map3inter_.get_attribute<Vec3, Vertex::ORBIT>("position");//
+
+    for(int i = 0; i < mon_squelette.branches_.size(); i++)
+    {
+        // Pour savoir si la branche arrive ou quitte l intersection car chaque branche à un départ et une arrivée
+        int indic_arrivee = mon_squelette.ind_bout_arrive_[i];
+        int indic_depart = mon_squelette.ind_bout_depart_[i];
+
+        int count = 0;
+
+
+
+            // Determinera si notre branche courant est liée à l'intersection courante
+            bool inter_liee_arrivee = (indic_arrivee == inter.indicateur_);
+            bool inter_liee_depart = (indic_depart == inter.indicateur_);
+
+            if(inter_liee_arrivee || inter_liee_depart)
+            {
+                // On récupèrera un dart de bord de la branche courante.
+                Dart d_res, d_branche, d_bord;
+                if(inter_liee_arrivee)
+                {
+                    d_branche = map_.phi<2112>(controls_[i].volume_control_[controls_[i].volume_control_.size() - 1]);
+                    d_bord = map_.phi1(d_branche);
+                }
+                if(inter_liee_depart)
+                {
+                    d_branche = map_.phi1(controls_[i].volume_control_[0]);
+                    d_bord = map_.phi_1(d_branche);
+                }
+
+                // Trouver les vertices avec les mêmes coordonées (les plus proches en réalité)
+                double diff_bord_ref = 100;
+                double diff_centre_ref = 100;
+                Vertex v_ref_centre, v_ref_bord;
+                map3inter_.foreach_cell( [&](Vertex v){
+                    Vec3 a = (vertex_position_[Vertex(d_branche)] - vertex_inter_position_[v]);
+                    Vec3 b = (vertex_position_[Vertex(d_bord)] - vertex_inter_position_[v]);
+
+                    if(a.squaredNorm() < diff_centre_ref)
+                    {
+
+                        diff_centre_ref = a.squaredNorm();
+                        v_ref_centre = v;
+
+                    }
+                    if(b.squaredNorm() < diff_bord_ref)
+                    {
+
+                        diff_bord_ref = b.squaredNorm();
+                        v_ref_bord = v;
+
+
+                    }
+                });
+
+                std::cout << " dist ref : " << diff_bord_ref << std::endl;
+                std::cout << " dist centre : " << diff_centre_ref << std::endl;
+
+
+                map3inter_.foreach_dart_of_orbit(v_ref_bord, [&](Dart d)
+                {
+                    Dart d_intermediaire;
+                    if(inter_liee_arrivee)
+                        d_intermediaire = d;
+                    else
+                        d_intermediaire = map3inter_.phi1(d);
+                    bool cond1 = (vertex_inter_position_[Vertex(map3inter_.phi1(d_intermediaire))] - vertex_position_[Vertex(d_branche)]).norm() < 0.0001;
+                    bool cond2 = (vertex_inter_position_[Vertex(map3inter_.phi_1(d_intermediaire))] - vertex_position_[Vertex(map_.phi_1(d_branche))]).norm() < 0.0001;
+                    bool cond3 = (vertex_inter_position_[Vertex(d_intermediaire)] - vertex_position_[Vertex(map_.phi1(d_branche))]).norm() < 0.0001;
+
+                    if (cond1 && cond2 && cond3)
+                    {
+                        std::cout << "geometric found / phi3 boundary ? ";
+                        std::cout << std::boolalpha << map3inter_.is_boundary(map3inter_.phi3(d_intermediaire)) << std::endl;
+                        d_res = d_intermediaire;
+                    }
+
+                });
+
+                std::cout << "nb darts map3inter : " << map3inter_.nb_darts() << std::endl;
+                //map2_.clear_and_remove_attributes();
+                //map_.merge(map3inter_);
+                std::cout << "nb dart map : " << map_.nb_darts() << std::endl;
+                //map3inter_.clear_and_remove_attributes();
+
+
+            count++;
+        }
+    }*/
+
+    //
+    // TEST => idem avec MAP3 et la MAP2 si ça fait du sens
+    //
+
+    /*
+    Intersection inter = mon_squelette.intersections_[0];
+    MakeIntersection(inter.faces_, inter.contours_);
+
+    for(int i = 0; i < mon_squelette.branches_.size(); i++)
+    {
+        // Pour savoir si la branche arrive ou quitte l intersection car chaque branche à un départ et une arrivée
+        int indic_arrivee = mon_squelette.ind_bout_arrive_[i];
+        int indic_depart = mon_squelette.ind_bout_depart_[i];
+
+        // Determinera si notre branche courant est liée à l'intersection courante
+        bool inter_liee_arrivee = (indic_arrivee == inter.indicateur_);
+        bool inter_liee_depart = (indic_depart == inter.indicateur_);
+
+        if(inter_liee_arrivee || inter_liee_depart)
+        {
+            // On récupèrera un dart de bord de la branche courante.
+            Dart d_res, d_branche, d_bord;
+            if(inter_liee_arrivee)
+            {
+                d_branche = map_.phi<2112>(controls_[i].volume_control_[controls_[i].volume_control_.size() - 1]);
+                d_bord = map_.phi1(d_branche);
+            }
+            if(inter_liee_depart)
+            {
+                d_branche = map_.phi1(controls_[i].volume_control_[0]);
+                d_bord = map_.phi_1(d_branche);
+            }
+
+            // Trouver les vertices avec les mêmes coordonées (les plus proches en réalité)
+            double diff_bord_ref = 10000;
+            Vertex2 v_ref_bord;
+            map2_.foreach_cell( [&](Vertex2 v){
+                Vec3 b = (vertex_position_[Vertex(d_bord)] - vertex2_position_[v]);
+                if(b.squaredNorm() < diff_bord_ref)
+                {
+                    diff_bord_ref = b.squaredNorm();
+                    v_ref_bord = v;
+
+                }
+            });
+            std::cout << " dist ref : " << diff_bord_ref << std::endl;
+
+            map2_.foreach_dart_of_orbit(v_ref_bord, [&](Dart d)
+            {
+                Dart d_intermediaire;
+                if(inter_liee_arrivee)
+                    d_intermediaire = d;
+                else
+                    d_intermediaire = map2_.phi1(d);
+
+                bool cond1 = (vertex2_position_[Vertex2(map2_.phi1(d_intermediaire))] - vertex_position_[Vertex(d_branche)]).norm() < 0.0001;
+                bool cond2 = (vertex2_position_[Vertex2(map2_.phi_1(d_intermediaire))] - vertex_position_[Vertex(map_.phi_1(d_branche))]).norm() < 0.0001;
+                bool cond3 = (vertex2_position_[Vertex2(d_intermediaire)] - vertex_position_[Vertex(map_.phi1(d_branche))]).norm() < 0.0001;
+
+                if(cond1 && cond2 && cond3)
+                {
+                    std::cout << "geometric found" << std::endl;
+                    d_res = d_intermediaire;
+                }
+
+            });
+        }
+    }*/
+
+    map_.check_map_integrity();
+
 
     map_.foreach_cell([&] (Vertex v){ std::cout<<vertex_appartenance_[v]<<std::endl;}, [&] (Vertex v){ return false;} );
 
+
     /*
-    for(Intersection inter : mon_squelette.intersections_)
+    int dart_count = 0;
+    int bad_dart = 0;
+    map_.foreach_cell([&] (Vertex v){
+        map_.foreach_dart_of_orbit(v,[&](Dart d) {
+            if(!map_.is_boundary(map_.phi3((d))))
+            {
+                std::cout<<" le dart n'est pas incident au bord "<<std::endl;
+                bad_dart++;
+            }
+            dart_count++;
+        });
+    }, [&] (Vertex v){ return (vertex_appartenance_[v] == 1);});
+
+    // Nb de Dart testé/2 == nb de dart mauvais (normalement)
+    std::cout << "nb de darts testé (avec redondance)" << dart_count << std::endl;
+    std::cout << "nb de darts mauvais (avec redondance)" << bad_dart << std::endl;*/
+
+
+    //
+    // TEST : Coudre deux branches entre elles
+    //
+    /*
+    for(int x = 0; x < TYPE_PRIMITIVE; x++)
     {
-        // liste des branches incidentes
-        for(int i = 0; i < inter.branches_incidentes_.size(); i++)
+        Dart d_end = map_.phi<2112>(controls_[0].volume_control_[controls_[0].volume_control_.size() - TYPE_PRIMITIVE + x]);
+        Dart d_start =  controls_[1].volume_control_[x];
+        map_.sew_volumes(Face(d_end), Face(d_start));
+    }*/
+
+
+    //
+    // TEST : Coudre un unique prisme à un bout de branche
+    //
+    /*
+    // make topo
+    MapBuilder mbuildbis(map3inter_);
+    Dart d = mbuildbis.add_prism_topo(3);
+    mbuildbis.close_map();
+    // init attributes
+    vertex_position_bis_ = map3inter_.add_attribute<Vec3, Vertex::ORBIT>("position");
+    vertex_appartenance_bis_ = map3inter_.add_attribute<int, Vertex::ORBIT>("appartenance");
+    vertex_normal_bis_ = map3inter_.add_attribute<Vec3, Vertex::ORBIT>("normal");
+    Vec3 a1 = {0, 0, 0};
+    Vec3 a2 = {0, 1, 0};
+    Vec3 a3 = {1, 1, 0};
+    Vec3 b1 = {0, 0, 1};
+    Vec3 b2 = {0, 1, 1};
+    Vec3 b3 = {1, 0, 1};
+    vertex_position_bis_[Vertex(d)] = a1;
+    vertex_position_bis_[Vertex(map3inter_.phi1(d))] = a2;
+    vertex_position_bis_[Vertex(map3inter_.phi_1(d))] = a3;
+    vertex_position_bis_[Vertex(map3inter_.phi<2112>(d))] = b1;
+    vertex_position_bis_[Vertex(map3inter_.phi<211211>(d))] = b2;
+    vertex_position_bis_[Vertex(map3inter_.phi<21121>(d))] = b3;
+    vertex_appartenance_bis_[Vertex(d)] = 1;
+    vertex_appartenance_bis_[Vertex(map3inter_.phi1(d))] = 1;
+    vertex_appartenance_bis_[Vertex(map3inter_.phi_1(d))] = 1;
+    vertex_appartenance_bis_[Vertex(map3inter_.phi<2112>(d))] = 1;
+    vertex_appartenance_bis_[Vertex(map3inter_.phi<211211>(d))] = 1;
+    vertex_appartenance_bis_[Vertex(map3inter_.phi<21121>(d))] = 1;
+
+    cgogn_assert(map3inter_.check_map_integrity());
+    cgogn_assert(map_.check_map_integrity());
+
+    map_.merge(map3inter_);
+
+    map_.check_map_integrity();
+
+
+    //vertex_appartenance_ = map_.get_attribute<Vec3, Vertex::ORBIT>("position");
+
+    //trouver les darts correspondants à coudre
+    double dist_ref = 100000;
+    Vertex v_ref;
+
+    Dart d_first = map_.phi<2112>(controls_[0].volume_control_[controls_[0].volume_control_.size() - 1]); // Dart de bout de la dernière branche
+    map_.foreach_cell( [&](Vertex v){
+        Vec3 dist = vertex_position_[v] - vertex_position_[Vertex(d_first)];
+        if(dist.norm() < dist_ref)
         {
-            //Branch branche = branches_[inter.branches_incidentes_[i]];
-            Dart dbord = controls_[inter.branches_incidentes_[i]].volume_control_[controls_[inter.branches_incidentes_[i]].volume_control_.size() - 1];
-            Dart dcentre = map_.phi
+            dist_ref = dist.norm();
+            v_ref = v;
+        }
+
+    }, [&] (Vertex v) {
+        if(vertex_appartenance_[v] == 1)
+            return true;
+        else
+            return false;
+    });
+
+    Dart d_res;
+    map_.foreach_dart_of_orbit(v_ref, [&] (Dart d) {
+
+        if(map_.phi<111>(d) == d)
+            d_res = d;
+
+    });
+
+    map_.sew_volumes(Face(d_first), Face(d_res));*/
+
+
+    //
+    // CODE EN COURS
+    //
+    /*
+    int counting = 0;
+    // On va tester chaque branche avec chaque intersection
+    for(int i = 0; i < mon_squelette.branches_.size(); i++)
+    {
+        // Pour savoir si la branche arrive ou quitte l intersection car chaque branche à un départ et une arrivée
+        int indic_arrivee = mon_squelette.ind_bout_arrive_[i];
+        int indic_depart = mon_squelette.ind_bout_depart_[i];
+
+        int increment = 1;
+        for(Intersection inter : mon_squelette.intersections_)
+        {
+
+            // Determinera si notre branche courant est liée à l'intersection courante
+            bool inter_liee_arrivee = (indic_arrivee == inter.indicateur_);
+            bool inter_liee_depart = (indic_depart == inter.indicateur_);
+
+            if(inter_liee_arrivee || inter_liee_depart)
+            {
+                // On récupèrera un dart de bord de la branche courante.
+                Dart d_res, d_branche, d_bord;
+                if(inter_liee_arrivee)
+                {
+                    d_branche = map_.phi<2112>(controls_[i].volume_control_[controls_[i].volume_control_.size() - 1]);
+                    d_bord = map_.phi1(d_branche);
+                }
+                if(inter_liee_depart)
+                {
+                    d_branche = map_.phi1(controls_[i].volume_control_[0]);
+                    d_bord = map_.phi_1(d_branche);
+                }
+
+                cgogn_message_assert(map_.is_boundary(map_.phi3(d_bord)), "pas boundary");
+                cgogn_message_assert(map_.is_boundary(map_.phi3(d_branche)), "pas boundary");
+
+                // Trouver les vertices avec les mêmes coordonées (les plus proches en réalité)
+                double diff_bord_ref = 100;
+                double diff_centre_ref = 100;
+                Vertex v_ref_centre, v_ref_bord;
+                map_.foreach_cell( [&](Vertex v){
+                    Vec3 a = (vertex_position_[Vertex(d_branche)] - vertex_position_[v]);
+                    Vec3 b = (vertex_position_[Vertex(d_bord)] - vertex_position_[v]);
+                    if(a.squaredNorm() < diff_centre_ref)
+                    {
+                        diff_centre_ref = a.squaredNorm();
+                        v_ref_centre = v;
+                    }
+                    if(b.squaredNorm() < diff_bord_ref)
+                    {
+                        diff_bord_ref = b.squaredNorm();
+                        v_ref_bord = v;
+                    }
+                }, [&](Vertex v) {return (vertex_appartenance_[v] == 1); });
+
+                std::cout << "point du bord trouvé : " << diff_bord_ref << std::endl;
+                std::cout << "point du centre trouvé : " << diff_centre_ref << std::endl;
+                cgogn_message_assert(!map_.same_orbit(v_ref_centre, Vertex(d_branche)), "v_ref_centre sur la branche");
+                cgogn_message_assert(!map_.same_orbit(v_ref_bord, Vertex(d_bord)), "v_ref_bord sur la branche");
+                cgogn_message_assert(vertex_appartenance_[v_ref_centre] == 1, "v_ref_centre pas sur intersection");
+                cgogn_message_assert(vertex_appartenance_[v_ref_bord] == 1, "v_ref_bord pas sur intersection");
+
+                std::cout << vertex_position_[Vertex(d_branche)][0] << "," << vertex_position_[Vertex(d_branche)][1] << "," << vertex_position_[Vertex(d_branche)][2] << " / ";
+                std::cout << vertex_position_[Vertex(map_.phi_1(d_branche))][0] << "," << vertex_position_[Vertex(map_.phi_1(d_branche))][1] << "," << vertex_position_[Vertex(map_.phi_1(d_branche))][2] << " / ";
+                std::cout << vertex_position_[Vertex(map_.phi1(d_branche))][0] << "," << vertex_position_[Vertex(map_.phi1(d_branche))][1] << "," << vertex_position_[Vertex(map_.phi1(d_branche))][2] << std::endl;
+
+                map_.foreach_dart_of_orbit(v_ref_bord, [&](Dart d)
+                {
+                    Dart d_intermediaire;
+                    bool cond_dart = false;
+                    if(inter_liee_arrivee)
+                    {
+                        d_intermediaire = d;
+                        cond_dart = map_.same_orbit(v_ref_centre, Vertex(map_.phi1(d_intermediaire)));
+                    }
+                    else
+                    {
+                        d_intermediaire = map_.phi1(d);
+                        cond_dart = map_.same_orbit(v_ref_centre, Vertex(d_intermediaire));
+                    }
+
+                    std::cout << vertex_position_[Vertex(d_intermediaire)][0] << "," << vertex_position_[Vertex(d_intermediaire)][1] << "," << vertex_position_[Vertex(d_intermediaire)][2] << " / ";
+                    std::cout << vertex_position_[Vertex(map_.phi_1(d_intermediaire))][0] << "," << vertex_position_[Vertex(map_.phi_1(d_intermediaire))][1] << "," << vertex_position_[Vertex(map_.phi_1(d_intermediaire))][2] << " / ";
+                    std::cout << vertex_position_[Vertex(map_.phi1(d_intermediaire))][0] << "," << vertex_position_[Vertex(map_.phi1(d_intermediaire))][1] << "," << vertex_position_[Vertex(map_.phi1(d_intermediaire))][2] << std::endl;
+
+                    bool cond1 = (vertex_position_[Vertex(map_.phi1(d_intermediaire))] - vertex_position_[Vertex(d_branche)]).norm() < 0.0001;
+                    bool cond2 = (vertex_position_[Vertex(map_.phi_1(d_intermediaire))] - vertex_position_[Vertex(map_.phi_1(d_branche))]).norm() < 0.0001;
+                    bool cond3 = (vertex_position_[Vertex(d_intermediaire)] - vertex_position_[Vertex(map_.phi1(d_branche))]).norm() < 0.0001;
+
+                    if (cond1 && cond2 && cond3)
+                    {
+                        std::cout << "geometric found / phi3 boundary ? ";
+                        std::cout << std::boolalpha << map_.is_boundary(map_.phi3(d_intermediaire)) << std::endl;
+                        d_res = d_intermediaire;
+                    }
+                });
+
+                cgogn_message_assert(!d_res.is_nil(), "d_res pas trouvé");
+
+
+
+
+//                for(int w = 0; w < TYPE_PRIMITIVE - 1; w++)
+//                {
+//                    map_.sew_volumes(Face(d_res), Face(d_branche));
+
+//                    d_res = map_.phi2(d_res);
+//                    do
+//                    {
+//                        d_res = map_.phi<32>(d_res);
+//                    }while(!map_.is_boundary(map_.phi3(d_res)));
+
+//                    d_branche = map_.phi<232>(d_branche);
+//                    d_res = map_.phi_1(d_res);
+//                    d_branche = map_.phi1(d_branche);
+//                }
+
+                // IMPORTANT
+                map_.sew_volumes(Face(d_branche),Face(d_res));
+
+            }
         }
     }*/
 
 
+    //
+    // TEST : Sew Volume sans tétrahèdriser
+    //
 
+    int counting = 0;
     // On va tester chaque branche avec chaque intersection
     for(int i = 0; i < mon_squelette.branches_.size(); i++)
     {
-        // Pour savoir si la branche arrive ou quitte l intersection
+        // Pour savoir si la branche arrive ou quitte l intersection car chaque branche à un départ et une arrivée
         int indic_arrivee = mon_squelette.ind_bout_arrive_[i];
         int indic_depart = mon_squelette.ind_bout_depart_[i];
 
-        int increment = 0;
+        int increment = 1;
         for(Intersection inter : mon_squelette.intersections_)
         {
-            Dart dbord, dcentre;
 
-            bool inter_liee = false; // determinera si notre branche courant est liée à l'intersection courante
-            if(indic_arrivee == inter.indicateur_)
+            // Determinera si notre branche courant est liée à l'intersection courante
+            bool inter_liee_arrivee = (indic_arrivee == inter.indicateur_);
+            bool inter_liee_depart = (indic_depart == inter.indicateur_);
+
+            if(inter_liee_arrivee || inter_liee_depart)
             {
-                dbord = map_.phi<2112>(controls_[i].volume_control_[controls_[i].volume_control_.size() - 1]);
-                dcentre = map_.phi1(dbord);
-                inter_liee = true;
-            }
-            if(indic_depart == inter.indicateur_)
-            {
-                dbord = controls_[i].volume_control_[0];
-                dcentre = map_.phi1(dbord);
-                inter_liee = true;
-            }
+                // On récupèrera un dart de bord de la branche courante.
+                Dart d_res, d_branche, d_bord;
+                if(inter_liee_arrivee)
+                {
+                    d_branche = map_.phi<2112>(controls_[i].volume_control_[controls_[i].volume_control_.size() - 1]);
+                    d_bord = map_.phi1(d_branche);
+                }
+                if(inter_liee_depart)
+                {
+                    d_branche = map_.phi1(controls_[i].volume_control_[0]);
+                    d_bord = map_.phi_1(d_branche);
+                }
 
-
-            if(inter_liee == true)
-            {
-                double distbord_ref = 100;
-                double distcentre_ref = 100;
-                Vertex VbordInter;
-                Vertex VcentreInter;
-
-                map_.foreach_cell([&] (Vertex v){
-
-                    //
-                    // Tester la géométrie => trouver les points les plus proche de bord et centre
-
-                    Vec3 bordvec = vertex_position_[dbord] - vertex_position_[v];
-                    Vec3 centrevec = vertex_position_[dcentre] - vertex_position_[v];
-                    if(distbord_ref < bordvec.norm())
+                // Trouver les vertices avec les mêmes coordonées (les plus proches en réalité)
+                double diff_bord_ref = 100;
+                double diff_centre_ref = 100;
+                Vertex v_ref_centre, v_ref_bord;
+                map_.foreach_cell( [&](Vertex v){
+                    Vec3 a = (vertex_position_[Vertex(d_branche)] - vertex_position_[v]);
+                    Vec3 b = (vertex_position_[Vertex(d_bord)] - vertex_position_[v]);
+                    if(a.squaredNorm() < diff_centre_ref)
                     {
-                        distbord_ref = bordvec.norm();
-                        VbordInter = v;
+                        diff_centre_ref = a.squaredNorm();
+                        v_ref_centre = v;
                     }
-                    if(distcentre_ref < centrevec.norm())
+                    if(b.squaredNorm() < diff_bord_ref)
                     {
-                        distcentre_ref = centrevec.norm();
-                        VcentreInter = v;
+                        diff_bord_ref = b.squaredNorm();
+                        v_ref_bord = v;
+                    }
+                }, [&](Vertex v) {return (vertex_appartenance_[v] == 1); });
+
+                std::cout << "point du bord trouvé : " << diff_bord_ref << std::endl;
+                std::cout << "point du centre trouvé : " << diff_centre_ref << std::endl;
+
+                std::cout << vertex_position_[Vertex(d_branche)][0] << "," << vertex_position_[Vertex(d_branche)][1] << "," << vertex_position_[Vertex(d_branche)][2] << " / ";
+                std::cout << vertex_position_[Vertex(map_.phi_1(d_branche))][0] << "," << vertex_position_[Vertex(map_.phi_1(d_branche))][1] << "," << vertex_position_[Vertex(map_.phi_1(d_branche))][2] << " / ";
+                std::cout << vertex_position_[Vertex(map_.phi1(d_branche))][0] << "," << vertex_position_[Vertex(map_.phi1(d_branche))][1] << "," << vertex_position_[Vertex(map_.phi1(d_branche))][2] << std::endl;
+
+                map_.foreach_dart_of_orbit(v_ref_bord, [&](Dart d)
+                {
+                    Dart d_intermediaire;
+                    bool cond_dart = false;
+                    if(inter_liee_arrivee)
+                    {
+                        d_intermediaire = d;
+                        cond_dart = map_.same_orbit(v_ref_centre, Vertex(map_.phi1(d_intermediaire)));
+                    }
+                    else
+                    {
+                        d_intermediaire = map_.phi1(d);
+                        cond_dart = map_.same_orbit(v_ref_centre, Vertex(d_intermediaire));
                     }
 
-                }, [&] (Vertex v){
-                    if(vertex_appartenance_[v] == increment)
-                        return true;
+                    std::cout << vertex_position_[Vertex(d_intermediaire)][0] << "," << vertex_position_[Vertex(d_intermediaire)][1] << "," << vertex_position_[Vertex(d_intermediaire)][2] << " / ";
+                    std::cout << vertex_position_[Vertex(map_.phi_1(d_intermediaire))][0] << "," << vertex_position_[Vertex(map_.phi_1(d_intermediaire))][1] << "," << vertex_position_[Vertex(map_.phi_1(d_intermediaire))][2] << " / ";
+                    std::cout << vertex_position_[Vertex(map_.phi1(d_intermediaire))][0] << "," << vertex_position_[Vertex(map_.phi1(d_intermediaire))][1] << "," << vertex_position_[Vertex(map_.phi1(d_intermediaire))][2] << std::endl;
+
+                    bool cond1 = (vertex_position_[Vertex(map_.phi1(d_intermediaire))] - vertex_position_[Vertex(d_branche)]).norm() < 0.0001;
+                    bool cond2 = (vertex_position_[Vertex(map_.phi_1(d_intermediaire))] - vertex_position_[Vertex(map_.phi_1(d_branche))]).norm() < 0.0001;
+                    bool cond3 = (vertex_position_[Vertex(d_intermediaire)] - vertex_position_[Vertex(map_.phi1(d_branche))]).norm() < 0.0001;
+
+                    if (cond1 && cond2 && cond3 && map_.is_boundary(map_.phi3(d_intermediaire)))
+                    {
+                        std::cout << "geometric found && phi3 boundary " <<std::endl;
+                        std::cout << std::boolalpha << map_.is_boundary(map_.phi3(d_intermediaire)) << std::endl;
+                        d_res = d_intermediaire;//
+                    }
                 });
 
-                //
-                // TEST
+                if(map_.is_boundary(map_.phi3(d_res)))
+                    std::cout << "on est sur le bord véritable" << std::endl;
+                std::cout << "Dart d'intersection' numero : " << d_res << std::endl;
+                std::cout << "Dart de branche numero : " << d_branche << std::endl;
 
-                 std::cout << "devrait apparaitre 3fois" << std::endl;
-
-                //
-                // Maintenant on a nos deux sommets pour l'interesection
-
-                 /*
-                 MapBuilder mbuild(map_);
-
-                 std::cout << "coucou 1" << std::endl;
-
-                 //mbuild.sew_volumes(VbordInter.dart, dbord);
-                 Vertex v;
-
-                 //map_.foreach_adjacent_volume_through_vertex(v);
-                 //map_.foreach_dart_of_PHI1()
-                 //map_.foreach_dart_of_orbit()
-
-                 std::cout << "coucou 2" << std::endl;
-                 //mbuild.sew_volumes(VcentreInter.dart, dcentre);
-
-                 mbuild.close_map();*/
+                for(int w = 0; w < TYPE_PRIMITIVE - 1; w++)
+                {
+                    map_.sew_volumes(Face(d_res), Face(d_branche));
+                    d_branche = map_.phi<2321>(d_branche);
+                    d_res = map_.phi_1(map_.phi2(d_res));
+                }
+                map_.sew_volumes(Face(d_res),Face(d_branche));
             }
-
-            increment++;
         }
-
-
     }
 
+    vertex_position_ = map_.get_attribute<Vec3, Vertex::ORBIT>("position");
 
-
-
-
-
-    /*
-    vertex_position_ = pos_attribute;
-    cgogn_assert(pos_attribute.is_valid());*/
     map_.check_map_integrity();
 }
 

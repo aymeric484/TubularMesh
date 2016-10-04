@@ -72,7 +72,7 @@ public:
     // Tentative emballage sans contrainte
     void ComputeConnectivity8();
     // Tentative emballage sans priorité OK
-    void ComputeConnectivity9();
+    std::vector<int> ComputeConnectivity9();
 
 
 };

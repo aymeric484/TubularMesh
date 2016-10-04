@@ -108,22 +108,30 @@ void Viewer2::MakeIntersection(std::vector<TriangleGeo> triangles, std::vector<V
     for(TriangleGeo T_test : triangles)
     {
         Dart d_test = dart_faces[nb_courant];
-        int a = T_test.ind1_;
-        int b = T_test.ind2_;
-        int c = T_test.ind3_;
+        int a = T_test.connectivity_[0];
+        int b = T_test.connectivity_[1];
+        int c = T_test.connectivity_[2];
+        std::cout << "triangle de reférence : " << a << "/ " << b << "/ " << c << std::endl;
         int count = 0;
-
+        int cond_valide = 0;
+        int Nb_voisin = 0;
         for(TriangleGeo T_courant : triangles)
         {
             //
             // Déterminer si les triangles sont voisins
             bool voisin = false;
-            bool sommet1 = T_courant.ind1_ == a || T_courant.ind1_ == b || T_courant.ind1_ == c;
-            bool sommet2 = T_courant.ind2_ == a || T_courant.ind2_ == b || T_courant.ind2_ == c;
-            bool sommet3 = T_courant.ind3_ == a || T_courant.ind3_ == b || T_courant.ind3_ == c;
+            bool sommet1 = (T_courant.connectivity_[0] == a) || (T_courant.connectivity_[1] == a) || (T_courant.connectivity_[2] == a);
+            bool sommet2 = (T_courant.connectivity_[0] == b) || (T_courant.connectivity_[1] == b) || (T_courant.connectivity_[2] == b);
+            bool sommet3 = (T_courant.connectivity_[0] == c) || (T_courant.connectivity_[1] == c) || (T_courant.connectivity_[2] == c);
 
-            if((sommet1 && sommet2) || (sommet3 && sommet1) || (sommet3 && sommet2))
+            std::cout << "triangle à comparer : " << T_courant.connectivity_[0] << "/ " << T_courant.connectivity_[1] << "/ " << T_courant.connectivity_[2] << std::endl;
+
+            if((sommet1 && sommet2 && !sommet3) || (sommet3 && sommet1 && !sommet2) || (sommet3 && sommet2 && !sommet1))
+            {
                 voisin = true;
+                Nb_voisin++;
+                std::cout << " condition OK " << std::endl;
+            }
 
             //
             // Si ils sont voisins, alors créer la face et la coller sur la bonne arête
@@ -132,59 +140,235 @@ void Viewer2::MakeIntersection(std::vector<TriangleGeo> triangles, std::vector<V
                 // On accède à la face
                 Dart d_courant = dart_faces[count];
 
+                //
                 // Puis test pour le sewing : Toute les possibilités orientées y sont représentés
+                //
+
+                //
                 // test à partir du premier sommet
-                if(T_courant.ind1_ == a)
+
+                // Pour ce sommet équivalent à "a"
+                if(T_courant.connectivity_[0] == a)
                 {
-                    if(T_courant.ind2_ = c)
+                    if(T_courant.connectivity_[1] == c)
                     {
                         d_courant = d_courant;
-                        if(map_.phi2(d_courant) != d_courant && map_.phi2(map_.phi_1(d_test)) != map_.phi_1(d_test))
+                        if(map_.phi2(d_courant) == d_courant && map_.phi2(map_.phi_1(d_test)) == map_.phi_1(d_test))
+                        {
                             mbuild2.phi2_sew(d_courant, map_.phi_1(d_test));
+                            cond_valide++;
+                        }
                     }
-                    if(T_courant.ind3_ == b)
+                    if(T_courant.connectivity_[2] == b)
                     {
                         d_courant = map_.phi_1(d_courant);
-                        if(map_.phi2(d_courant) != d_courant && map_.phi2(d_test) != d_test)
+                        if(map_.phi2(d_courant) == d_courant && map_.phi2(d_test) == d_test)
+                        {
                             mbuild2.phi2_sew(d_courant, d_test);
+                            cond_valide++;
+                        }
                     }
                 }
+
+                // Pour ce sommet équivalent à "b"
+                if(T_courant.connectivity_[0] == b)
+                {
+                    if(T_courant.connectivity_[1] == a)
+                    {
+                        d_courant = d_courant;
+                        if(map_.phi2(d_courant) == d_courant && map_.phi2(d_test) == d_test)
+                        {
+                            mbuild2.phi2_sew(d_courant, d_test);
+                            cond_valide++;
+                        }
+                    }
+                    if(T_courant.connectivity_[2] == c)
+                    {
+                        d_courant = map_.phi_1(d_courant);
+                        if(map_.phi2(d_courant) == d_courant && map_.phi2(map_.phi1(d_test)) == map_.phi1(d_test))
+                        {
+                            mbuild2.phi2_sew(d_courant, map_.phi1(d_test));
+                            cond_valide++;
+                        }
+                    }
+                }
+
+                // Pour ce sommet équivalent à "c"
+                if(T_courant.connectivity_[0] == c)
+                {
+                    if(T_courant.connectivity_[1] == b)
+                    {
+                        d_courant = d_courant;
+                        if(map_.phi2(d_courant) == d_courant && map_.phi2(map_.phi1(d_test)) == map_.phi1(d_test))
+                        {
+                            mbuild2.phi2_sew(d_courant, map_.phi1(d_test));
+                            cond_valide++;
+                        }
+                    }
+                    if(T_courant.connectivity_[2] == a)
+                    {
+                        d_courant = map_.phi_1(d_courant);
+                        if(map_.phi2(d_courant) == d_courant && map_.phi2(map_.phi_1(d_test)) == map_.phi_1(d_test))
+                        {
+                            mbuild2.phi2_sew(d_courant, d_test);
+                            cond_valide++;
+                        }
+                    }
+                }
+
+                //
                 // test à partir du deuxième sommet
-                if(T_courant.ind2_ == b)
+
+                // Pour ce sommet équivalent à "a"
+                if(T_courant.connectivity_[1] == a)
                 {
-                    if(T_courant.ind1_ = c)
+                    if(T_courant.connectivity_[0] == b)
                     {
                         d_courant = d_courant;
-                        if(map_.phi2(d_courant) != d_courant && map_.phi2(map_.phi1(d_test)) != map_.phi1(d_test))
-                            mbuild2.phi2_sew(d_courant, map_.phi1(d_test));
+                        if(map_.phi2(d_courant) == d_courant && map_.phi2(d_test) == d_test)
+                        {
+                            mbuild2.phi2_sew(d_courant, d_test);
+                            cond_valide++;
+                        }
                     }
-                    if(T_courant.ind3_ == a)
+                    if(T_courant.connectivity_[2] == c)
                     {
                         d_courant = map_.phi1(d_courant);
-                        if(map_.phi2(d_courant) != d_courant && map_.phi2(d_test) != d_test)
-                            mbuild2.phi2_sew(d_courant, d_test);
+                        if(map_.phi2(d_courant) == d_courant && map_.phi2(map_.phi_1(d_test)) == map_.phi_1(d_test))
+                        {
+                            mbuild2.phi2_sew(d_courant, map_.phi_1(d_test));
+                            cond_valide++;
+                        }
                     }
                 }
-                // test à partir du troisième sommet
-                if(T_courant.ind3_ == c)
+
+                // Pour ce sommet équivalent à "b"
+                if(T_courant.connectivity_[1] == b)
                 {
-                    if(T_courant.ind1_ = b)
+                    if(T_courant.connectivity_[0] == c)
                     {
-                        d_courant = map_.phi_1(d_courant);
-                        if(map_.phi2(d_courant) != d_courant && map_.phi2(map_.phi1(d_test)) != map_.phi1(d_test))
+                        d_courant = d_courant;
+                        if(map_.phi2(d_courant) == d_courant && map_.phi2(map_.phi1(d_test)) == map_.phi1(d_test))
+                        {
                             mbuild2.phi2_sew(d_courant, map_.phi1(d_test));
+                            cond_valide++;
+                        }
                     }
-                    if(T_courant.ind2_ == a)
+                    if(T_courant.connectivity_[2] == a)
                     {
                         d_courant = map_.phi1(d_courant);
-                        if(map_.phi2(d_courant) != d_courant && map_.phi2(map_.phi_1(d_test)) != map_.phi_1(d_test))
+                        if(map_.phi2(d_courant) == d_courant && map_.phi2(d_test) == d_test)
+                        {
+                            mbuild2.phi2_sew(d_courant, d_test);
+                            cond_valide++;
+                        }
+                    }
+                }
+
+                // Pour ce sommet équivalent à "c"
+                if(T_courant.connectivity_[1] == c)
+                {
+                    if(T_courant.connectivity_[0] == a)
+                    {
+                        d_courant = d_courant;
+                        if(map_.phi2(d_courant) == d_courant && map_.phi2(map_.phi_1(d_test)) == map_.phi_1(d_test))
+                        {
                             mbuild2.phi2_sew(d_courant, map_.phi_1(d_test));
+                            cond_valide++;
+                        }
+                    }
+                    if(T_courant.connectivity_[2] == b)
+                    {
+                        d_courant = map_.phi1(d_courant);
+                        if(map_.phi2(d_courant) == d_courant && map_.phi2(map_.phi1(d_test)) == map_.phi1(d_test))
+                        {
+                            mbuild2.phi2_sew(d_courant, map_.phi1(d_test));
+                            cond_valide++;
+                        }
+                    }
+                }
+
+
+                //
+                // Test à partir du troisième sommet
+
+                // Pour ce sommet équivalent à "a"
+                if(T_courant.connectivity_[2] == a)
+                {
+                    if(T_courant.connectivity_[0] == c)
+                    {
+                        d_courant = map_.phi_1(d_courant);
+                        if(map_.phi2(d_courant) == d_courant && map_.phi2(map_.phi_1(d_test)) == map_.phi_1(d_test))
+                        {
+                            mbuild2.phi2_sew(d_courant, map_.phi_1(d_test));
+                            cond_valide++;
+                        }
+                    }
+                    if(T_courant.connectivity_[1] == b)
+                    {
+                        d_courant = map_.phi1(d_courant);
+                        if(map_.phi2(d_courant) == d_courant && map_.phi2(d_test) == d_test)
+                        {
+                            mbuild2.phi2_sew(d_courant, d_test);
+                            cond_valide++;
+
+                        }
+                    }
+                }
+
+                // Pour ce sommet équivalent à "b"
+                if(T_courant.connectivity_[2] == b)
+                {
+                    if(T_courant.connectivity_[0] == a)
+                    {
+                        d_courant = map_.phi_1(d_courant);
+                        if(map_.phi2(d_courant) == d_courant && map_.phi2(d_test) == d_test)
+                        {
+                            mbuild2.phi2_sew(d_courant, d_test);
+                            cond_valide++;
+                        }
+                    }
+                    if(T_courant.connectivity_[1] == c)
+                    {
+                        d_courant = map_.phi1(d_courant);
+                        if(map_.phi2(d_courant) == d_courant && map_.phi2(map_.phi1(d_test)) == map_.phi1(d_test))
+                        {
+                            mbuild2.phi2_sew(d_courant, map_.phi1(d_test));
+                            cond_valide++;
+
+                        }
+                    }
+                }
+
+                // Pour ce sommet équivalent à "c"
+                if(T_courant.connectivity_[2] == c)
+                {
+                    if(T_courant.connectivity_[0] == b)
+                    {
+                        d_courant = map_.phi_1(d_courant);
+                        if(map_.phi2(d_courant) == d_courant && map_.phi2(map_.phi1(d_test)) == map_.phi1(d_test))
+                        {
+                            mbuild2.phi2_sew(d_courant, map_.phi1(d_test));
+                            cond_valide++;
+                        }
+                    }
+                    if(T_courant.connectivity_[1] == a)
+                    {
+                        d_courant = map_.phi1(d_courant);
+                        if(map_.phi2(d_courant) == d_courant && map_.phi2(map_.phi_1(d_test)) == map_.phi_1(d_test))
+                        {
+                            mbuild2.phi2_sew(d_courant, map_.phi_1(d_test));
+                            cond_valide++;
+                        }
                     }
                 }
             }
             count++;
         }
         nb_courant++;
+        std::cout << " On effectue les coutures : " << cond_valide << std::endl;
+        std::cout << "Nombres de voisin qui devrait valoir 3 : " << Nb_voisin << std::endl;
+
     }
 
     mbuild2.close_map();
@@ -373,7 +557,8 @@ Viewer2::Viewer2() :
     edge_rendering_(false),
     normal_rendering_(false),
     bb_rendering_(true)
-{}
+{
+}
 
 void Viewer2::draw()
 {

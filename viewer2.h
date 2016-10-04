@@ -35,6 +35,7 @@
 #include "window.h"
 #include "coucheconcentrique.h"
 #include "squelette.h"
+#include "topo.h"
 
 #define DEFAULT_MESH_PATH CGOGN_STR(CGOGN_TEST_MESHES_PATH)
 
@@ -75,9 +76,11 @@ public:
     void keyPressEvent(QKeyEvent *ev);
     void MakeIntersection(std::vector<TriangleGeo>, std::vector<Vec3>);
 
+
 private:
 
     Map2 map_;
+
     VertexAttribute2<Vec3> vertex_position_;
     VertexAttribute2<Vec3> vertex_normal_;
 

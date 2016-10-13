@@ -28,7 +28,7 @@ public:
     // Le constructeur sera un parseur
     Squelette(const std::string&);
 
-    std::vector<Vec3> positions_; // On y met toute les positions
+    // std::vector<Vec3> positions_; // On y met toute les positions
 
     // Dans un deuxième temps, il extraira le squelette d'une image 3D
 

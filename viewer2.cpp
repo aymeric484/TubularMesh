@@ -380,8 +380,8 @@ void Viewer2::MakeIntersection(std::vector<TriangleGeo> triangles, std::vector<V
 
     // TEST : Pour vérifier que l'on est bien sur une sphère
 
-
-    /*int incre = 0;
+    /*
+    int incre = 0;
     for(TriangleGeo T : triangles)
     {
         Dart d = dart_faces[incre];
@@ -390,6 +390,7 @@ void Viewer2::MakeIntersection(std::vector<TriangleGeo> triangles, std::vector<V
         vertex_position_[Vertex2(map_.phi_1(d))] = T.sommets_[2];
         incre++;
     }*/
+
 
     // Véritables valeurs
 
@@ -489,9 +490,73 @@ void Viewer2::MakeIntersection(std::vector<TriangleGeo> triangles, std::vector<V
 
 
     //
-    // Subdiviser la map2 en utilisant les coordonées
+    // Subdiviser la map2 (en utilisant les coordonées?)
     //
 
+    std::vector<Dart> faces_a_subdiv;
+    int counter_T = 0;
+    for(TriangleGeo T : triangles)
+    {
+        Dart d = dart_faces[counter_T];
+
+        int cond_s0 = T.connectivity_[0]%(TYPE_PRIMITIVE + 1);
+        int cond_s1 = T.connectivity_[1]%(TYPE_PRIMITIVE + 1);
+        int cond_s2 = T.connectivity_[2]%(TYPE_PRIMITIVE + 1);
+
+        if(0!=cond_s1 && 0!=cond_s0 && 0!=cond_s2)
+        {
+            faces_a_subdiv.push_back(d);
+        }
+
+        counter_T++;
+    }
+
+    int nb_of_subdiv = 0;
+    std::vector<Dart> edge_to_flip;
+
+    while(nb_of_subdiv != NB_SUBDIV_INTERSECTION)
+    {
+
+        for(Dart d1 : faces_a_subdiv)
+        {
+            edge_to_flip.push_back(d1);
+            Dart d2 = map_.phi1(d1);
+            edge_to_flip.push_back(d2);
+            Dart d3 = map_.phi_1(d1);
+            edge_to_flip.push_back(d3);
+            Edge2 e1 = map_.cut_face(d1, d2);
+            Vertex2 v = map_.cut_edge(e1);
+            vertex_position_[v] = (vertex_position_[Vertex2(d1)] + vertex_position_[Vertex2(d3)] + vertex_position_[Vertex2(d2)])/3;
+            Dart d_centre = v.dart;
+            Edge2 e2 = map_.cut_face(d3,map_.phi<21>(d_centre));
+        }
+        faces_a_subdiv = edge_to_flip;
+
+        int taille_edge_to_flip = edge_to_flip.size();
+        for(int i = 0; i < taille_edge_to_flip; i++)
+        {
+            for(int j = 0; j < taille_edge_to_flip; j++)
+            {
+                // condition où deux edges sont les mêmes
+                if(i != j && map_.phi2(edge_to_flip[i]) == edge_to_flip[j])
+                {
+                    map_.flip_edge(Edge2(edge_to_flip[i]));
+                    edge_to_flip.erase(edge_to_flip.begin() + j);
+                    edge_to_flip.erase(edge_to_flip.begin() + i);
+                    taille_edge_to_flip--;
+                    taille_edge_to_flip--;
+                    i--;
+                    if(j > i)
+                        i--;
+                    break;
+
+                }
+            }
+        }
+
+        edge_to_flip.clear();
+        nb_of_subdiv++;
+    }
 
 
     cgogn::geometry::compute_normal<Vec3>(map_, vertex_position_, vertex_normal_);

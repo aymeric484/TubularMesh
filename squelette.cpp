@@ -33,9 +33,7 @@ Squelette::Squelette(const std::string& filename)
         fp >> line; // extrait uniquement jusqu'a un espace
 
         // On verifie si l'on commence une nouvelle branche
-        std::size_t pos = line.find("--") ;
-
-
+        std::size_t pos = line.find("--");
 
         if(pos != std::string::npos)
         {
@@ -110,8 +108,6 @@ Squelette::Squelette(const std::string& filename)
 
             }
         }
-
-
     }
 
     // On gère le point externe de la fin de la branche => derrnier point qui n'a pas de face associé puis on le retire de articulation
@@ -130,8 +126,9 @@ Squelette::Squelette(const std::string& filename)
         branche.BranchSimplify(DISTANCE_MIN);
         branche.CreateCircleCoordinates(TYPE_PRIMITIVE);
         branche.SubdiDirectionT(COURBURE_MAX, TYPE_PRIMITIVE);
+        /*
         for(Vec3 v : branche.pos_vertices_)
-            positions_.push_back(v);
+            positions_.push_back(v);*/
         //longueurs_.push_back((branche.articulations_.size()-1)*TYPE_PRIMITIVE);
         branches_[k] = branche;
     }
@@ -152,7 +149,7 @@ Squelette::Squelette(const std::string& filename)
 
         for(int j : ind_bout_depart_)
         {
-
+            // Une intersection est définie comme étant au bout de départ d'au moins une branches et au bout d'arrivé d'au moins une branche
             if(i == j)
             {
                 if(lock == true)
@@ -198,9 +195,8 @@ Squelette::Squelette(const std::string& filename)
 
     for(int j = 0; j < intersections_.size(); j++)
     {
-        std::vector<int> code_cas_particulier;
         Intersection inter = intersections_[j];
-        code_cas_particulier = inter.ComputeConnectivity9();
+        inter.ComputeConnectivity9();
         intersections_[j] = inter;
     }
 
@@ -214,9 +210,6 @@ Squelette::Squelette(const std::string& filename)
         for(Vec3 coord : intersection.contours_)
            std::cout << "x = " << coord[0] << "  y = " << coord[1] << "  z = " << coord[2] << std::endl;
     }*/
-
-
-
 
 }
 

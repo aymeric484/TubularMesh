@@ -1,6 +1,6 @@
 #include "branch.h"
 
-Branch::Branch(int& i)
+Branch::Branch(int&)
 {
 
     // fixed

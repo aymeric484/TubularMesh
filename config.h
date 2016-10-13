@@ -5,7 +5,7 @@
 #define Pi  3.14159265359
 #define DISTANCE_MIN 0.2
 #define COURBURE_MAX 0.20 // diverge en dessous de 0.0004 => probablement des NaN dans les calculs de courbures => ne viendrait pas de l'algo
-
+#define NB_SUBDIV_INTERSECTION 4 // COMPLEXITE!!! => ne jamais dépasser 7 (pour type primitive == 6)
 #define TYPE_PRIMITIVE 6
 #define MASK_SUBDIV_RAY 0.5 // doit être compris entre 0 et 1 exclus ; Plus on est proche de 1, plus la subdivision sera brutale
 // avec a = MASK_SUBDIV_RAY, et "n" le nombre d'appuis sur "C". On a : épaisseur du bord = ((1-a) ^ n) * Rayon

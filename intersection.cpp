@@ -3288,10 +3288,8 @@ void Intersection::ComputeConnectivity8()
 }
 
 
-std::vector<int> Intersection::ComputeConnectivity9()
+void Intersection::ComputeConnectivity9()
 {
-
-    std::vector<int> output;
 
     //
     //
@@ -3371,9 +3369,6 @@ std::vector<int> Intersection::ComputeConnectivity9()
 
     int counter = 0;
     bool ce = false;
-    int indice_branche_fausse_1 = -1;
-    int indice_branche_fausse_2 = -1;
-
     for(Vec3 proj : points_proj)
     {
         for(TriangleGeo TX_courant : Triangles_connus)
@@ -3386,40 +3381,14 @@ std::vector<int> Intersection::ComputeConnectivity9()
             {
                 double dist = TX_courant.normal_.dot(proj - TX_courant.sommets_[0]);
                 //std::cout << "dist  " << dist <<std::endl;
-                if(dist < -0.002)
-                {
-                    // Objectif : Trouver 2 bouts de branche fautifs.
-                    if(indice_branche_fausse_1 == -1)
-                        indice_branche_fausse_1 = int(TX_courant.connectivity_[0]/(TYPE_PRIMITIVE+1));
-                    if(indice_branche_fausse_2 == -1 && indice_branche_fausse_1 != int(TX_courant.connectivity_[0]/(TYPE_PRIMITIVE+1)))
-                        indice_branche_fausse_2 = int(TX_courant.connectivity_[0]/(TYPE_PRIMITIVE+1));
-
+                if(dist < -0.02)
                     ce = true;
-                }
             }
         }
         counter++;
     }
-
-
     if(ce)
-    {
         std::cout << " Bad input data" << std::endl;
-
-
-
-        // return l'indice de la branche à modifier et l'index de l'articulation à supprimer
-        // On utilisera ensuite une méthode ModifyBranch pour supprimer les articulations en surplus.
-        // (Défaut si l'on simplifie trop le squelette)
-        // Côté squelette, on modifiera les contours de l'intersection après avoir modifié les branche
-    }
-    else
-    {
-        // signifiera que tout est valide
-        output.push_back(-1);
-        output.push_back(-1);
-        std::cout << "good input data" << std::endl;
-    }
 
 
     //
@@ -3712,6 +3681,5 @@ std::vector<int> Intersection::ComputeConnectivity9()
     for(TriangleGeo T : faces_)
         std::cout << "  T0: "  << T.num_branch_ << std::endl;*/
 
-    return output;
 
 }

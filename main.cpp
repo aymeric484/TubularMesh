@@ -93,13 +93,6 @@ int main(int argc, char** argv)
     viewer.MakeIntersection(inter.faces_, inter.contours_);*/
 
 
-
-    viewer.setWindowTitle("simple_viewer");
-    //viewer.MakeFromSkeleton(squelette, TYPE_PRIMITIVE);
-    //viewer.MakeFromSkeleton(branche1.pos_vertices_,TYPE_PRIMITIVE);
-    //viewer.MakeFromSkeleton(branche2.pos_vertices_,TYPE_PRIMITIVE);
-    //viewer.MakeIntersection(inter.faces_, inter.contours_);
-    //viewer.generate_tetgen("pq1.1Y");
     viewer.move(105,68);//
     viewer.show();
 

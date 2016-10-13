@@ -55,6 +55,8 @@ public:
     // une fois qu'on a le sens et la direction de la normale, effectuer le test dot(normale,AM) avec M un point quelconque de notre nuage de point
     // Si dot > 0, alors on ignore le point et on passe au suivant
     // Sinon, on supprime notre triangle te on en créer 3 nouveaux reliant à chaque fois 2 points du triangle au point externe
+
+
     // 1ere tentative fausse
     void ComputeConnectivity();
     // Algo classique faux
@@ -72,7 +74,7 @@ public:
     // Tentative emballage sans contrainte
     void ComputeConnectivity8();
     // Tentative emballage sans priorité OK
-    std::vector<int> ComputeConnectivity9();
+    void ComputeConnectivity9();
 
 
 };

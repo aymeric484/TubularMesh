@@ -372,7 +372,6 @@ void topo::MakeIntersection(std::vector<TriangleGeo> triangles, std::vector<Vec3
         int a = T_test.connectivity_[0];
         int b = T_test.connectivity_[1];
         int c = T_test.connectivity_[2];
-        std::cout << "triangle de reférence : " << a << "/ " << b << "/ " << c << std::endl;
         int count = 0;
         int cond_valide = 0;
         int Nb_voisin = 0;
@@ -385,13 +384,11 @@ void topo::MakeIntersection(std::vector<TriangleGeo> triangles, std::vector<Vec3
             bool sommet2 = (T_courant.connectivity_[0] == b) || (T_courant.connectivity_[1] == b) || (T_courant.connectivity_[2] == b);
             bool sommet3 = (T_courant.connectivity_[0] == c) || (T_courant.connectivity_[1] == c) || (T_courant.connectivity_[2] == c);
 
-            std::cout << "triangle à comparer : " << T_courant.connectivity_[0] << "/ " << T_courant.connectivity_[1] << "/ " << T_courant.connectivity_[2] << std::endl;
 
             if((sommet1 && sommet2 && !sommet3) || (sommet3 && sommet1 && !sommet2) || (sommet3 && sommet2 && !sommet1))
             {
                 voisin = true;
                 Nb_voisin++;
-                std::cout << " condition OK " << std::endl;
             }
 
             //
@@ -627,8 +624,6 @@ void topo::MakeIntersection(std::vector<TriangleGeo> triangles, std::vector<Vec3
             count++;
         }
         nb_courant++;
-        std::cout << " On effectue les coutures : " << cond_valide << std::endl;
-        std::cout << "Nombres de voisin qui devrait valoir 3 : " << Nb_voisin << std::endl;
     }
 
 
@@ -747,6 +742,91 @@ void topo::MakeIntersection(std::vector<TriangleGeo> triangles, std::vector<Vec3
     //
     // Subdiviser la map2 en utilisant les coordonées
     //
+
+    std::vector<Dart> faces_a_subdiv;
+    int counter_T = 0;
+    for(TriangleGeo T : triangles)
+    {
+        Dart d = dart_faces[counter_T];
+
+        int cond_s0 = T.connectivity_[0]%(TYPE_PRIMITIVE + 1);
+        int cond_s1 = T.connectivity_[1]%(TYPE_PRIMITIVE + 1);
+        int cond_s2 = T.connectivity_[2]%(TYPE_PRIMITIVE + 1);
+
+        if(0!=cond_s1 && 0!=cond_s0 && 0!=cond_s2)
+        {
+            faces_a_subdiv.push_back(d);
+        }
+
+        counter_T++;
+    }//
+
+    int nb_of_subdiv = 0;
+    std::vector<Dart> edge_to_flip;
+
+    while(nb_of_subdiv != NB_SUBDIV_INTERSECTION)
+    {
+
+        for(Dart d1 : faces_a_subdiv)
+        {
+            edge_to_flip.push_back(d1);
+            Dart d2 = map2_.phi1(d1);
+            edge_to_flip.push_back(d2);
+            Dart d3 = map2_.phi_1(d1);
+            edge_to_flip.push_back(d3);
+            Edge2 e1 = map2_.cut_face(d1, d2);
+            Vertex2 v = map2_.cut_edge(e1);
+
+            // Centre du cercle circonscrit
+            vertex2_position_[v] = (vertex2_position_[Vertex2(d1)] + vertex2_position_[Vertex2(d3)] + vertex2_position_[Vertex2(d2)])/3;
+
+            // Autre option : cercle incrit
+            /*
+            Vec3 A = vertex2_position_[Vertex2(d1)];
+            Vec3 B = vertex2_position_[Vertex2(d2)];
+            Vec3 C = vertex2_position_[Vertex2(d3)];
+            vertex2_position_[v] = ((C-B).norm()*A + (C-A).norm()*B + (A-B).norm()*C)/((C-B).norm() + (C-A).norm() + (B-A).norm());*/
+
+
+            Dart d_centre = v.dart;
+            Edge2 e2 = map2_.cut_face(d3,map2_.phi<21>(d_centre));
+        }
+        faces_a_subdiv = edge_to_flip;
+        int taille_edge_to_flip = edge_to_flip.size();
+        for(int i = 0; i < taille_edge_to_flip; i++)
+        {
+            for(int j = 0; j < taille_edge_to_flip; j++)
+            {
+                // condition où deux edges sont les mêmes
+                if(i != j && map2_.phi2(edge_to_flip[i]) == edge_to_flip[j])
+                {
+                    map2_.flip_edge(Edge2(edge_to_flip[i]));
+                    edge_to_flip.erase(edge_to_flip.begin() + j);
+                    edge_to_flip.erase(edge_to_flip.begin() + i);
+                    taille_edge_to_flip--;
+                    taille_edge_to_flip--;
+                    i--;
+                    if(j > i)
+                        i--;
+                    break;
+
+                }
+            }
+        }
+
+        edge_to_flip.clear();
+        nb_of_subdiv++;
+    }
+
+
+
+    int counter = 0;
+    map2_.foreach_cell([&](Face2 f){
+
+        counter++;
+
+    });
+    std::cout << "Il y a " << counter << " faces dans l'intersection " << std::endl;
 
 }
 
@@ -1051,27 +1131,79 @@ void topo::MakeFromSkeleton(const Squelette& mon_squelette, const unsigned int& 
     // VRAI code
     // Fusion intersection avec map_
 
+
+    Map3::DartMarker dm(map_);
     int count = 0;
     for(Intersection inter : mon_squelette.intersections_)
     {
         MakeIntersection(inter.faces_, inter.contours_);
-        Map3::DartMarker dm(map_);
+
 
         // Merge with Map2
-
+        /*
         map_.merge(map2_, dm);
         Map3::Attribute<Vec3, Vertex32::ORBIT> pos2 = map_.get_attribute<Vec3, Vertex32::ORBIT>("position");
         map_.foreach_cell([&](Vertex v){
             vertex_position_[v] = pos2[Vertex32(v.dart)];
             vertex_appartenance_[v] = count + 1;
-        }, [&] (Vertex v) {return dm.is_marked(v.dart);});
+        }, [&] (Vertex v) {return dm.is_marked(v.dart);});*/
 
 
         //Merge with Map3inter
-        /*
+
         Generate_tetgen("pq1.1a0.01Y", count);
         map_.merge(map3inter_, dm);
-        map3inter_.clear_and_remove_attributes();*/
+        map3inter_.clear_and_remove_attributes();
+
+        //
+        // TEST : Est ce qu'il existe des dart Phi3 libre sur la map après le merge
+        /*
+        int incre_nb_boundary = 0;
+        int incre_nb_dart = 0;
+        map_.foreach_cell([&](Vertex v){
+            map_.foreach_dart_of_orbit(v,[&](Dart d){
+                if(map_.is_boundary(d) && map_.is_boundary(map_.phi3(d)))
+                    incre_nb_boundary++;
+                incre_nb_dart++;
+            });
+
+        }, [&] (Vertex v) {return dm.is_marked(v.dart);});
+        std::cout << "nb de dart Phi3 boundary (avec redondance) : " << incre_nb_boundary << std::endl;
+        std::cout << "nb de dart (Total avec redondance) : " << incre_nb_dart << std::endl;*/
+
+        // Avec les volumes
+        /*int incre_nb_boundary = 0;
+        int incre_nb_dart = 0;
+        int nb_volume = 0;
+        map_.foreach_cell([&](Volume v){
+            map_.foreach_dart_of_orbit(v,[&](Dart d){
+                if(map_.is_boundary(d) && map_.is_boundary(map_.phi3(d)))
+                    incre_nb_boundary++;
+                incre_nb_dart++;
+            });
+            nb_volume++;
+
+        }, [&] (Volume v) {return dm.is_marked(v.dart);});
+        std::cout << "nb de volume : " << nb_volume << std::endl;
+        std::cout << "nb de dart (Total avec redondance) : " << incre_nb_dart << std::endl;*/
+
+        // Avec les faces
+        /*
+        int incre_nb_boundary = 0;
+        int incre_nb_dart = 0;
+        int nb_face = 0;
+        map_.foreach_cell([&](Face v){
+            map_.foreach_dart_of_orbit(v,[&](Dart d){
+                if(map_.is_boundary(d) && map_.is_boundary(map_.phi3(d)))
+                    incre_nb_boundary++;
+                incre_nb_dart++;
+            });
+            nb_face++;
+
+        }, [&] (Face v) {return dm.is_marked(v.dart);});
+        std::cout << "nb de faces : " << nb_face << std::endl;
+        std::cout << "nb de dart (Total avec redondance) : " << incre_nb_dart << std::endl;*/
+
 
         map2_.clear_and_remove_attributes();
 
@@ -1083,12 +1215,11 @@ void topo::MakeFromSkeleton(const Squelette& mon_squelette, const unsigned int& 
     // TEST => On va faire le Dart Match making et les tests correspondants sur les deux MAP3 distinctes
     //
     //vertex_inter_position_ = map3inter_.get_attribute<Vec3, Vertex::ORBIT>("position");
-
     /*
     Intersection inter = mon_squelette.intersections_[0];
     MakeIntersection(inter.faces_, inter.contours_);
     Generate_tetgen("pq1.1a0.01Y", 0);
-    vertex_inter_position_ = map3inter_.get_attribute<Vec3, Vertex::ORBIT>("position");//
+    vertex_inter_position_ = map3inter_.get_attribute<Vec3, Vertex::ORBIT>("position");
 
     for(int i = 0; i < mon_squelette.branches_.size(); i++)
     {
@@ -1098,81 +1229,79 @@ void topo::MakeFromSkeleton(const Squelette& mon_squelette, const unsigned int& 
 
         int count = 0;
 
+        // Determinera si notre branche courant est liée à l'intersection courante
+        bool inter_liee_arrivee = (indic_arrivee == inter.indicateur_);
+        bool inter_liee_depart = (indic_depart == inter.indicateur_);
 
-
-            // Determinera si notre branche courant est liée à l'intersection courante
-            bool inter_liee_arrivee = (indic_arrivee == inter.indicateur_);
-            bool inter_liee_depart = (indic_depart == inter.indicateur_);
-
-            if(inter_liee_arrivee || inter_liee_depart)
+        if(inter_liee_arrivee || inter_liee_depart)
+        {
+            // On récupèrera un dart de bord de la branche courante.
+            Dart d_res, d_branche, d_bord;
+            if(inter_liee_arrivee)
             {
-                // On récupèrera un dart de bord de la branche courante.
-                Dart d_res, d_branche, d_bord;
+                d_branche = map_.phi<2112>(controls_[i].volume_control_[controls_[i].volume_control_.size() - 1]);
+                d_bord = map_.phi1(d_branche);
+            }
+            if(inter_liee_depart)
+            {
+                d_branche = map_.phi1(controls_[i].volume_control_[0]);
+                d_bord = map_.phi_1(d_branche);
+            }
+
+            // Trouver les vertices avec les mêmes coordonées (les plus proches en réalité)
+            double diff_bord_ref = 100;
+            double diff_centre_ref = 100;
+            Vertex v_ref_centre, v_ref_bord;
+            map3inter_.foreach_cell( [&](Vertex v){
+                Vec3 a = (vertex_position_[Vertex(d_branche)] - vertex_inter_position_[v]);
+                Vec3 b = (vertex_position_[Vertex(d_bord)] - vertex_inter_position_[v]);
+
+                if(a.squaredNorm() < diff_centre_ref)
+                {
+
+                    diff_centre_ref = a.squaredNorm();
+                    v_ref_centre = v;
+
+                }
+                if(b.squaredNorm() < diff_bord_ref)
+                {
+
+                    diff_bord_ref = b.squaredNorm();
+                    v_ref_bord = v;
+
+
+                }
+            });
+
+            std::cout << " dist ref : " << diff_bord_ref << std::endl;
+            std::cout << " dist centre : " << diff_centre_ref << std::endl;
+
+
+            map3inter_.foreach_dart_of_orbit(v_ref_bord, [&](Dart d)
+            {
+                Dart d_intermediaire;
                 if(inter_liee_arrivee)
+                    d_intermediaire = d;
+                else
+                    d_intermediaire = map3inter_.phi1(d);
+                bool cond1 = (vertex_inter_position_[Vertex(map3inter_.phi1(d_intermediaire))] - vertex_position_[Vertex(d_branche)]).norm() < 0.0001;
+                bool cond2 = (vertex_inter_position_[Vertex(map3inter_.phi_1(d_intermediaire))] - vertex_position_[Vertex(map_.phi_1(d_branche))]).norm() < 0.0001;
+                bool cond3 = (vertex_inter_position_[Vertex(d_intermediaire)] - vertex_position_[Vertex(map_.phi1(d_branche))]).norm() < 0.0001;
+
+                if (cond1 && cond2 && cond3)
                 {
-                    d_branche = map_.phi<2112>(controls_[i].volume_control_[controls_[i].volume_control_.size() - 1]);
-                    d_bord = map_.phi1(d_branche);
+                    std::cout << "geometric found / phi3 boundary ? ";
+                    std::cout << std::boolalpha << map3inter_.is_boundary(map3inter_.phi3(d_intermediaire)) << std::endl;
+                    d_res = d_intermediaire;
                 }
-                if(inter_liee_depart)
-                {
-                    d_branche = map_.phi1(controls_[i].volume_control_[0]);
-                    d_bord = map_.phi_1(d_branche);
-                }
 
-                // Trouver les vertices avec les mêmes coordonées (les plus proches en réalité)
-                double diff_bord_ref = 100;
-                double diff_centre_ref = 100;
-                Vertex v_ref_centre, v_ref_bord;
-                map3inter_.foreach_cell( [&](Vertex v){
-                    Vec3 a = (vertex_position_[Vertex(d_branche)] - vertex_inter_position_[v]);
-                    Vec3 b = (vertex_position_[Vertex(d_bord)] - vertex_inter_position_[v]);
+            });
 
-                    if(a.squaredNorm() < diff_centre_ref)
-                    {
-
-                        diff_centre_ref = a.squaredNorm();
-                        v_ref_centre = v;
-
-                    }
-                    if(b.squaredNorm() < diff_bord_ref)
-                    {
-
-                        diff_bord_ref = b.squaredNorm();
-                        v_ref_bord = v;
-
-
-                    }
-                });
-
-                std::cout << " dist ref : " << diff_bord_ref << std::endl;
-                std::cout << " dist centre : " << diff_centre_ref << std::endl;
-
-
-                map3inter_.foreach_dart_of_orbit(v_ref_bord, [&](Dart d)
-                {
-                    Dart d_intermediaire;
-                    if(inter_liee_arrivee)
-                        d_intermediaire = d;
-                    else
-                        d_intermediaire = map3inter_.phi1(d);
-                    bool cond1 = (vertex_inter_position_[Vertex(map3inter_.phi1(d_intermediaire))] - vertex_position_[Vertex(d_branche)]).norm() < 0.0001;
-                    bool cond2 = (vertex_inter_position_[Vertex(map3inter_.phi_1(d_intermediaire))] - vertex_position_[Vertex(map_.phi_1(d_branche))]).norm() < 0.0001;
-                    bool cond3 = (vertex_inter_position_[Vertex(d_intermediaire)] - vertex_position_[Vertex(map_.phi1(d_branche))]).norm() < 0.0001;
-
-                    if (cond1 && cond2 && cond3)
-                    {
-                        std::cout << "geometric found / phi3 boundary ? ";
-                        std::cout << std::boolalpha << map3inter_.is_boundary(map3inter_.phi3(d_intermediaire)) << std::endl;
-                        d_res = d_intermediaire;
-                    }
-
-                });
-
-                std::cout << "nb darts map3inter : " << map3inter_.nb_darts() << std::endl;
-                //map2_.clear_and_remove_attributes();
-                //map_.merge(map3inter_);
-                std::cout << "nb dart map : " << map_.nb_darts() << std::endl;
-                //map3inter_.clear_and_remove_attributes();
+            std::cout << "nb darts map3inter : " << map3inter_.nb_darts() << std::endl;
+            //map2_.clear_and_remove_attributes();
+            //map_.merge(map3inter_);
+            std::cout << "nb dart map : " << map_.nb_darts() << std::endl;
+            //map3inter_.clear_and_remove_attributes();
 
 
             count++;
@@ -1180,7 +1309,7 @@ void topo::MakeFromSkeleton(const Squelette& mon_squelette, const unsigned int& 
     }*/
 
     //
-    // TEST => idem avec MAP3 et la MAP2 si ça fait du sens
+    // TEST => idem avec MAP3 et la MAP2 (a moins de sens)
     //
 
     /*
@@ -1360,7 +1489,7 @@ void topo::MakeFromSkeleton(const Squelette& mon_squelette, const unsigned int& 
     //
     // CODE EN COURS
     //
-    /*
+
     int counting = 0;
     // On va tester chaque branche avec chaque intersection
     for(int i = 0; i < mon_squelette.branches_.size(); i++)
@@ -1414,16 +1543,10 @@ void topo::MakeFromSkeleton(const Squelette& mon_squelette, const unsigned int& 
                     }
                 }, [&](Vertex v) {return (vertex_appartenance_[v] == 1); });
 
-                std::cout << "point du bord trouvé : " << diff_bord_ref << std::endl;
-                std::cout << "point du centre trouvé : " << diff_centre_ref << std::endl;
                 cgogn_message_assert(!map_.same_orbit(v_ref_centre, Vertex(d_branche)), "v_ref_centre sur la branche");
                 cgogn_message_assert(!map_.same_orbit(v_ref_bord, Vertex(d_bord)), "v_ref_bord sur la branche");
                 cgogn_message_assert(vertex_appartenance_[v_ref_centre] == 1, "v_ref_centre pas sur intersection");
                 cgogn_message_assert(vertex_appartenance_[v_ref_bord] == 1, "v_ref_bord pas sur intersection");
-
-                std::cout << vertex_position_[Vertex(d_branche)][0] << "," << vertex_position_[Vertex(d_branche)][1] << "," << vertex_position_[Vertex(d_branche)][2] << " / ";
-                std::cout << vertex_position_[Vertex(map_.phi_1(d_branche))][0] << "," << vertex_position_[Vertex(map_.phi_1(d_branche))][1] << "," << vertex_position_[Vertex(map_.phi_1(d_branche))][2] << " / ";
-                std::cout << vertex_position_[Vertex(map_.phi1(d_branche))][0] << "," << vertex_position_[Vertex(map_.phi1(d_branche))][1] << "," << vertex_position_[Vertex(map_.phi1(d_branche))][2] << std::endl;
 
                 map_.foreach_dart_of_orbit(v_ref_bord, [&](Dart d)
                 {
@@ -1440,54 +1563,45 @@ void topo::MakeFromSkeleton(const Squelette& mon_squelette, const unsigned int& 
                         cond_dart = map_.same_orbit(v_ref_centre, Vertex(d_intermediaire));
                     }
 
-                    std::cout << vertex_position_[Vertex(d_intermediaire)][0] << "," << vertex_position_[Vertex(d_intermediaire)][1] << "," << vertex_position_[Vertex(d_intermediaire)][2] << " / ";
-                    std::cout << vertex_position_[Vertex(map_.phi_1(d_intermediaire))][0] << "," << vertex_position_[Vertex(map_.phi_1(d_intermediaire))][1] << "," << vertex_position_[Vertex(map_.phi_1(d_intermediaire))][2] << " / ";
-                    std::cout << vertex_position_[Vertex(map_.phi1(d_intermediaire))][0] << "," << vertex_position_[Vertex(map_.phi1(d_intermediaire))][1] << "," << vertex_position_[Vertex(map_.phi1(d_intermediaire))][2] << std::endl;
-
                     bool cond1 = (vertex_position_[Vertex(map_.phi1(d_intermediaire))] - vertex_position_[Vertex(d_branche)]).norm() < 0.0001;
                     bool cond2 = (vertex_position_[Vertex(map_.phi_1(d_intermediaire))] - vertex_position_[Vertex(map_.phi_1(d_branche))]).norm() < 0.0001;
                     bool cond3 = (vertex_position_[Vertex(d_intermediaire)] - vertex_position_[Vertex(map_.phi1(d_branche))]).norm() < 0.0001;
 
                     if (cond1 && cond2 && cond3)
-                    {
-                        std::cout << "geometric found / phi3 boundary ? ";
-                        std::cout << std::boolalpha << map_.is_boundary(map_.phi3(d_intermediaire)) << std::endl;
                         d_res = d_intermediaire;
-                    }
                 });
 
                 cgogn_message_assert(!d_res.is_nil(), "d_res pas trouvé");
 
+                for(int w = 0; w < TYPE_PRIMITIVE - 1; w++)
+                {
+                    map_.sew_volumes(Face(d_res), Face(d_branche));
 
+                    d_res = map_.phi2(d_res);
+                    do
+                    {
+                        d_res = map_.phi<32>(d_res);
+                    }while(!map_.is_boundary(map_.phi3(d_res)));
 
-
-//                for(int w = 0; w < TYPE_PRIMITIVE - 1; w++)
-//                {
-//                    map_.sew_volumes(Face(d_res), Face(d_branche));
-
-//                    d_res = map_.phi2(d_res);
-//                    do
-//                    {
-//                        d_res = map_.phi<32>(d_res);
-//                    }while(!map_.is_boundary(map_.phi3(d_res)));
-
-//                    d_branche = map_.phi<232>(d_branche);
-//                    d_res = map_.phi_1(d_res);
-//                    d_branche = map_.phi1(d_branche);
-//                }
+                    d_branche = map_.phi<232>(d_branche);
+                    d_res = map_.phi_1(d_res);
+                    d_branche = map_.phi1(d_branche);
+                }
 
                 // IMPORTANT
                 map_.sew_volumes(Face(d_branche),Face(d_res));
+                dart_to_color_blue_ = d_branche;
+                dart_to_color_red_ = d_res;
 
             }
         }
-    }*/
+    }
 
 
     //
     // TEST : Sew Volume sans tétrahèdriser
     //
-
+    /*
     int counting = 0;
     // On va tester chaque branche avec chaque intersection
     for(int i = 0; i < mon_squelette.branches_.size(); i++)
@@ -1581,6 +1695,7 @@ void topo::MakeFromSkeleton(const Squelette& mon_squelette, const unsigned int& 
                 std::cout << "Dart d'intersection' numero : " << d_res << std::endl;
                 std::cout << "Dart de branche numero : " << d_branche << std::endl;
 
+
                 for(int w = 0; w < TYPE_PRIMITIVE - 1; w++)
                 {
                     map_.sew_volumes(Face(d_res), Face(d_branche));
@@ -1590,7 +1705,7 @@ void topo::MakeFromSkeleton(const Squelette& mon_squelette, const unsigned int& 
                 map_.sew_volumes(Face(d_res),Face(d_branche));
             }
         }
-    }
+    }*/
 
     vertex_position_ = map_.get_attribute<Vec3, Vertex::ORBIT>("position");
 
@@ -2320,7 +2435,6 @@ void topo::SubdivisionConcentrique()
         //
         // Ajout des arêtes de la subdivision à l'aide des vertices rajouté à l'étape précédente
         //
-
 
         for(Dart d : Bt.volume_control_)
         {

@@ -129,7 +129,12 @@ void Viewer::draw()
     }
 
     if (topo_rendering_)
+    {
+        topo_drawer_->update_color(ma_topo_.dart_to_color_blue_,Vec3(1.0, 0.0, 0.0));
+        topo_drawer_->update_color(ma_topo_.dart_to_color_red_,Vec3(0.0, 0.0, 1.0));
+        //topo_drawer_->update_color(ma_topo_.dart_to_color_black_,Vec3(0.0, 0.0, 0.0));
         topo_drawer_rend_->draw(proj, view, this);
+    }
 
     if (edge_rendering_)
         volume_drawer_rend_->draw_edges(proj, view, this);

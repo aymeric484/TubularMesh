@@ -29,52 +29,157 @@ topo::topo(const Squelette& mon_squelette, const unsigned int& primitive) :
     // Coudre après fusion deux volume simples
     //TestMergeSew();
 
-    // Coudre simplement sans fusion
-    //TestSimpleSew();
+    // Affichage de 3 cubes qui subissent une subdivision avec raccordement
+    // TestSimpleSew();
 }
 
 void topo::TestSimpleSew()
 {
     //
-    // Création tétra_1 et tétra_2
+    // Création prisme 1,2,3 et couture de ces 3 prismes
 
     MapBuilder mbuilding(map_);
-    Dart d1 = mbuilding.add_pyramid_topo(3);
-    Dart d2 = mbuilding.add_pyramid_topo(3);
+
+    // Création
+    Dart d1 = mbuilding.add_prism_topo(4);
+    Dart d2 = mbuilding.add_prism_topo(4);
+    Dart d3 = mbuilding.add_prism_topo(4);
+
+    // Couture
+    mbuilding.sew_volumes(d2, map_.phi<2112>(d1));
+    mbuilding.sew_volumes(d3, map_.phi<2112>(d2));
+
     mbuilding.close_map();
+
     vertex_position_ = map_.add_attribute<Vec3, Vertex::ORBIT>("position");
 
     //
-    // Affectation tétra_1
+    // Liste des coordonées de chaque sommet et affectation
 
     Vec3 v11 = {0, 0, 0};
     Vec3 v12 = {0, 1, 0};
     Vec3 v13 = {1, 0, 0};
-    Vec3 v14 = {0, 0, 1};
+    Vec3 v14 = {1, 1, 0};
+    Vec3 v21 = {0, 0, 1};
+    Vec3 v22 = {0, 1, 1};
+    Vec3 v23 = {1, 0, 1};
+    Vec3 v24 = {1, 1, 1};
+    Vec3 v31 = {0, 0, 2};
+    Vec3 v32 = {0, 1, 2};
+    Vec3 v33 = {1, 0, 2};
+    Vec3 v34 = {1, 1, 2};
+    Vec3 v41 = {0, 0, 3};
+    Vec3 v42 = {0, 1, 3};
+    Vec3 v43 = {1, 0, 3};
+    Vec3 v44 = {1, 1, 3};
 
-    vertex_position_[Vertex(d1)] = v11;
-    vertex_position_[Vertex(map_.phi1(d1))] = v12;
-    vertex_position_[Vertex(map_.phi<11>(d1))] = v13;
-    vertex_position_[Vertex(map_.phi<211>(d1))] = v14;
+    // 1ère face
+    vertex_position_[Vertex(d1)] = v42;
+    vertex_position_[Vertex(map_.phi1(d1))] = v41;
+    vertex_position_[Vertex(map_.phi<11>(d1))] = v43;
+    vertex_position_[Vertex(map_.phi<111>(d1))] = v44;
+
+    // 2éme face
+    vertex_position_[Vertex(d2)] = v32;
+    vertex_position_[Vertex(map_.phi1(d2))] = v31;
+    vertex_position_[Vertex(map_.phi<11>(d2))] = v33;
+    vertex_position_[Vertex(map_.phi<111>(d2))] = v34;
+
+    // 3éme face
+    vertex_position_[Vertex(d3)] = v22;
+    vertex_position_[Vertex(map_.phi1(d3))] = v21;
+    vertex_position_[Vertex(map_.phi<11>(d3))] = v23;
+    vertex_position_[Vertex(map_.phi<111>(d3))] = v24;
+
+    // Dernière face
+    Dart d4 = map_.phi<21121>(d3);
+    vertex_position_[Vertex(d4)] = v12;
+    vertex_position_[Vertex(map_.phi1(d4))] = v14;
+    vertex_position_[Vertex(map_.phi<11>(d4))] = v13;
+    vertex_position_[Vertex(map_.phi<111>(d4))] = v11;
+
+
 
     //
-    // Affectation tétra_2
+    // Subdivision du volume du haut
 
-    Vec3 v21 = {1, 1, -2};
-    Vec3 v22 = {1, 2, -2};
-    Vec3 v23 = {2, 1, -2};
-    Vec3 v24 = {1, 1, -3};
+    // Création des sommets
 
-    vertex_position_[Vertex(d2)] = v21;
-    vertex_position_[Vertex(map_.phi1(d2))] = v22;
-    vertex_position_[Vertex(map_.phi<11>(d2))] = v23;
-    vertex_position_[Vertex(map_.phi<211>(d2))] = v24;
+    Vec3 AB1 = (vertex_position_[d1] + vertex_position_[map_.phi_1(d1)])/2;
+    Vec3 AB2 = (vertex_position_[map_.phi<11>(d1)] + vertex_position_[map_.phi1(d1)])/2;
+    Vec3 AB3 = (vertex_position_[d2] + vertex_position_[map_.phi_1(d2)])/2;
+    Vec3 AB4 = (vertex_position_[map_.phi<11>(d2)] + vertex_position_[map_.phi1(d2)])/2;
+
+    Vertex v1 = map_.cut_edge(Edge(map_.phi_1(d1)));
+    Vertex v2 = map_.cut_edge(Edge(map_.phi1(d1)));
+    Vertex v3 = map_.cut_edge(Edge(map_.phi_1(d2)));
+    Vertex v4 = map_.cut_edge(Edge(map_.phi1(d2)));
+
+    vertex_position_[v1] = AB1;
+    vertex_position_[v2] = AB2;
+    vertex_position_[v3] = AB3;
+    vertex_position_[v4] = AB4;
+
+    // Création des arêtes
+
+    Edge e1 = map_.cut_face(map_.phi_1(d1),map_.phi<11>(d1));
+    Edge e2 = map_.cut_face(map_.phi_1(d2),map_.phi<11>(d2));
+    Edge e3 = map_.cut_face(map_.phi<21>(map_.phi_1(d1)), map_.phi<32>(map_.phi_1(d2)));
+    Edge e4 = map_.cut_face(map_.phi<12>(d1), map_.phi<1321>(d2));
+
+    // Création du nouveau volume
+
+    std::vector<Dart> d_path;
+    Dart d_courant = map_.phi_1(map_.phi_1(d1));
+    d_path.push_back(d_courant);
+    d_courant = map_.phi<121>(d_courant);
+    d_path.push_back(d_courant);
+    d_courant = map_.phi<121>(d_courant);
+    d_path.push_back(d_courant);
+    d_courant = map_.phi<121>(d_courant);
+    d_path.push_back(d_courant);
+    Face f = map_.cut_volume(d_path);
 
     //
-    // Fusion des 2 tétras
+    // Subdivision du volume du milieu
+
+    std::vector<Dart> d_first_path;
+    std::vector<Dart> d_second_path;
+
+    // Création des arêtes
+    Dart d_mid1 = map_.phi<21>(map_.phi_1(d2));
+    Edge e5 = map_.cut_face(d_mid1, map_.phi<321>(map_.phi_1(d3)));
+    Edge e6 = map_.cut_face(d_mid1, map_.phi<32>(map_.phi_1(d3))); // check d_mid1
+
+    Dart d_mid2 = map_.phi<12>(d2);
+    Edge e7 = map_.cut_face(d_mid2, map_.phi<132>(d3));
+    Edge e8 = map_.cut_face(map_.phi2(map_.phi_1(d_mid2)), map_.phi<1321>(d3)); // check d_mid2
+
+    // Création des volumes
+    Dart d_start = map_.phi_1(d_mid2);
+    d_first_path.push_back(d_start);
+    d_start = map_.phi<121>(d_start);
+    d_first_path.push_back(d_start);
+    d_start = map_.phi<121>(d_start);
+    d_first_path.push_back(d_start);
+    d_start = map_.phi<121>(d_start);
+    d_first_path.push_back(d_start);
+
+    Dart d_start_bis = map_.phi<212121>(d_mid2);
+    d_second_path.push_back(d_start_bis);
+    d_start_bis = map_.phi<121>(d_start_bis);
+    d_second_path.push_back(d_start_bis);
+    d_start_bis = map_.phi<121>(d_start_bis);
+    d_second_path.push_back(d_start_bis);
+    d_start_bis = map_.phi<121>(d_start_bis);
+    d_second_path.push_back(d_start_bis);
+
+    Face ft1 = map_.cut_volume(d_first_path);
+    Face ft2 = map_.cut_volume(d_second_path);
 
     cgogn_assert(map_.check_map_integrity());
-    map_.sew_volumes(Face(d1), Face(d2));
+
+    //map_.sew_volumes(Face(d1), Face(d2));
 
 }
 
@@ -468,7 +573,7 @@ void topo::MakeIntersection(std::vector<TriangleGeo> triangles, std::vector<Vec3
                         d_courant = map2_.phi_1(d_courant);
                         if(map2_.phi2(d_courant) == d_courant && map2_.phi2(map2_.phi_1(d_test)) == map2_.phi_1(d_test))
                         {
-                            mbuild2.phi2_sew(d_courant, d_test);
+                            mbuild2.phi2_sew(d_courant, map2_.phi_1(d_test));
                             cond_valide++;
                         }
                     }
@@ -828,197 +933,6 @@ void topo::MakeIntersection(std::vector<TriangleGeo> triangles, std::vector<Vec3
     });
     std::cout << "Il y a " << counter << " faces dans l'intersection " << std::endl;
 
-}
-
-void topo::MakeBranch(const std::vector<Vec3>& positions, const unsigned int& primitives)
-{
-    BranchTopo Bt;
-    MapBuilder mbuild(map3branch_);
-    int nb_articulation = positions.size()/(primitives+1);
-    int volume_count = 0;
-    unsigned int count = 0;
-    unsigned int arti_count = 0;
-
-    // creation de nos volumes
-    for(int n = primitives ; n < nb_articulation*primitives ; n++)
-        Bt.volume_control_.push_back(mbuild.add_prism_topo(3));//construit le prisme et renvoi un dart du prisme d'une des faces triangulaires, rendant un parcourt du prisme possible
-
-
-    for(int m = 1 ; m < nb_articulation-1 ; m++)
-    {
-        for(int k = 0; k < primitives; k++)
-        {
-            // coudre les faces triangulaires des prismes(3d)
-            Dart v1 = map3branch_.phi2(map3branch_.phi1(map3branch_.phi1(map3branch_.phi2(Bt.volume_control_[(m-1)*primitives + k]))));
-            Dart v2 = Bt.volume_control_[m*primitives + k];
-            mbuild.sew_volumes(v1, v2);
-
-            // coudre les faces rectangulaires des prismes(3d)
-            Dart v3 = map3branch_.phi2(map3branch_.phi1(Bt.volume_control_[(m-1)*primitives + k]));
-            Dart v4;
-            if(k+1 != primitives)
-                v4 = map3branch_.phi2(Bt.volume_control_[(m-1)*primitives + k + 1]);
-            else
-                v4 = map3branch_.phi2(Bt.volume_control_[(m-1)*primitives]);
-            mbuild.sew_volumes(v3,v4);
-        }
-    }
-
-
-    // dernière serie de volumes (bout de branche)
-    for(int k = 0; k < primitives; k++)
-    {
-        Dart v3 = map3branch_.phi2(map3branch_.phi1(Bt.volume_control_[(nb_articulation-2)*primitives + k]));
-        Dart v4;
-        if(k+1 != primitives)
-            v4 = map3branch_.phi2(Bt.volume_control_[(nb_articulation-2)*primitives + k + 1]);
-        else
-            v4 = map3branch_.phi2(Bt.volume_control_[(nb_articulation-2)*primitives]);
-        mbuild.sew_volumes(v3,v4);
-    }
-
-    mbuild.close_map(); //reboucle les volumes en bord de map
-
-
-    map3branch_.foreach_cell([&] (Volume v){ volume_count++; }); // affichage du nombre de volumes
-    std::cout << " Il y a " << volume_count << " Volume(s)" << std::endl;
-
-
-    //Les vertices vont être indexe automatiquement & creation d'un de leur attribut, position dans l espace 3D
-
-    vertex_normal_ = map3branch_.add_attribute<Vec3, Vertex::ORBIT>("normal");
-    vertex_position_ = map3branch_.add_attribute<Vec3, Vertex::ORBIT>("position");
-
-    // affectation d'un point du prisme triangulaire & du point en commun aux n-prismes (n = primitive)
-    for(Dart d : Bt.volume_control_)
-    {
-        // il s'agit des positions des articulations
-        if(count == 0 || count == primitives + 1 )
-        {
-            Vertex v1(map3branch_.phi1(d));
-            vertex_position_[v1] = positions[arti_count * (primitives + 1)];
-            arti_count++;
-            count = 1;
-        }
-
-        // ici on a la position des points autour de chaque articulation
-        Vertex v2(d);
-        vertex_position_[v2] = positions[(arti_count-1) * (primitives + 1) + count]; // le facteur est (arti_count - 1) car on a arti_count++ dans le if
-        count++;
-    }
-
-
-
-
-    // On gère la dernière articulation
-
-    Dart last_arti = map3branch_.phi1(map3branch_.phi1(map3branch_.phi2(map3branch_.phi1(Bt.volume_control_[Bt.volume_control_.size() - 1]))));
-
-    vertex_position_[Vertex(last_arti)] = positions[(primitives+1)*(nb_articulation-1)];
-
-    // Ici, on gere la derniere face (les points autour de la dernière articulation)
-    for(unsigned int i = 0; i < primitives; i++)
-    {
-        Dart last_points = map3branch_.phi1(map3branch_.phi2(map3branch_.phi1(map3branch_.phi1(map3branch_.phi2(Bt.volume_control_[Bt.volume_control_.size()-primitives + i])))));
-        Vertex points(last_points);
-        vertex_position_[points] = positions[Bt.volume_control_.size() + nb_articulation + i];
-    }
-
-
-    map3branch_.check_map_integrity();
-
-
-    /*
-
-    MapBuilder mbuild(map3branch_);
-
-    int nb_articulation = positions.size()/(primitives + 1); // Remplacer position.size() par longueur[i]
-    int volume_count = 0;
-    unsigned int count = 0;
-    unsigned int arti_count = 0;
-
-    // creation de nos volumes
-    for(int n = primitives ; n < nb_articulation*primitives ; n++)
-        volume_control_.push_back(mbuild.add_prism_topo(3)); // construit le prisme et renvoi un dart du prisme d'une des faces triangulaires, rendant un parcourt du prisme possible
-
-    for(int m = 0 ; m < nb_articulation-2 ; m++)
-    {
-        for(int k = 0; k < primitives; k++)
-        {
-            // coudre les faces triangulaires des prismes(3d)
-            Dart v1 = map3branch_.phi2(map3branch_.phi1(map3branch_.phi1(map3branch_.phi2(volume_control_[volume_control_.size() - (nb_articulation-1)*primitives + m*primitives + k]))));
-            Dart v2 = volume_control_[volume_control_.size() - (nb_articulation-1)*primitives + (m+1)*primitives + k]; // +positions.size des branches précédentes. ou bien toujours partir de la fin! (vu qu'on pushback)
-            mbuild.sew_volumes(v1, v2);
-
-            // coudre les faces rectangulaires des prismes(3d)
-            Dart v3 = map3branch_.phi2(map3branch_.phi1(volume_control_[volume_control_.size() - (nb_articulation-1)*primitives + m*primitives + k]));
-            Dart v4;
-            if(k+1 != primitives)
-                v4 = map3branch_.phi2(volume_control_[volume_control_.size() - (nb_articulation-1)*primitives + m*primitives + k + 1]);
-            else
-                v4 = map3branch_.phi2(volume_control_[volume_control_.size() - (nb_articulation-1)*primitives + m*primitives]);
-
-            mbuild.sew_volumes(v3,v4);
-        }
-    }
-
-    // dernière serie de volumes (bout de branche)
-    for(int k = 0; k < primitives; k++)
-    {
-        Dart v3 = map3branch_.phi2(map3branch_.phi1(volume_control_[volume_control_.size() - primitives + k]));
-        Dart v4;
-        if(k+1 != primitives)
-            v4 = map3branch_.phi2(volume_control_[volume_control_.size() - primitives + k + 1]);
-        else
-            v4 = map3branch_.phi2(volume_control_[volume_control_.size() - primitives]);
-        mbuild.sew_volumes(v3,v4);
-    }
-
-    mbuild.close_map(); //reboucle les volumes en bord de map
-
-
-    map3branch_.foreach_cell([&] (Volume v){ volume_count++; }); // affichage du nombre de volumes
-    std::cout << " Il y a " << volume_count << " Volume(s)" << std::endl;
-
-
-    //Les vertices vont être indexe automatiquement & creation d'un de leur attribut, position dans l espace 3D
-    vertex_normal_ = map3branch_.add_attribute<Vec3, Vertex::ORBIT>("normal");
-    vertex_position_ = map3branch_.add_attribute<Vec3, Vertex::ORBIT>("position");
-
-
-    // Affectation d'un point du prisme triangulaire & du point en commun aux n-prismes (n = primitive)
-    for(int i = volume_control_.size() - (nb_articulation - 1)*primitives; i < volume_control_.size(); i++)
-    {
-        Dart d = volume_control_[i];
-        // Il s'agit des positions des articulations
-        if(count == 0 || count == primitives + 1 )
-        {
-            Vertex v1(map3branch_.phi1(d));
-            vertex_position_[v1] = positions[arti_count * (primitives + 1)];
-            arti_count++;
-            count = 1;
-        }
-
-        // ici on a la position des points autour de chaque articulation
-        Vertex v2(d);
-        vertex_position_[v2] = positions[(arti_count - 1) * (primitives + 1) + count]; // le facteur est (arti_count - 1) car on a arti_count++ dans le if
-        count++;
-    }
-
-    // On gère les dernières articulations
-    Dart last_arti = map3branch_.phi1(map3branch_.phi1(map3branch_.phi2(map3branch_.phi1(volume_control_[volume_control_.size() - 1]))));
-
-    vertex_position_[Vertex(last_arti)] = positions[(primitives+1)*(nb_articulation-1)];
-    // Ici, on gere la derniere face (les points autour de la dernière articulation)
-    for(unsigned int i = 0; i < primitives; i++)
-    {
-        Dart last_points = map3branch_.phi1(map3branch_.phi2(map3branch_.phi1(map3branch_.phi1(map3branch_.phi2(volume_control_[volume_control_.size()-primitives + i])))));
-        Vertex points(last_points);
-        vertex_position_[points] = positions[positions.size() - primitives + i];
-    }
-    */
-
-    controls_.push_back(Bt);
 }
 
 void topo::MakeFromSkeleton(const Squelette& mon_squelette, const unsigned int& primitives)

@@ -356,32 +356,12 @@ void Branch::BranchSimplify(const double& tolerance)
     // création du nouveau vector articulation_, à l'aide des indices des points à garder que l'on vient  d'obtenir (contenus dans indices)
     //
 
-    //int counting = 0;;
     for(it = indices.begin(); it < indices.end(); ++it)
-    {
-        //counting++;
-        //std::cout<< " articulation courante " << " X = " << articulations_[*it][0] << " Y = " <<  articulations_[*it][1] << " Z = " << articulations_[*it][2] << " counting : "<< counting << std::endl;
         copie_articulation.push_back(articulations_[*it]);
-    }
 
     articulations_.clear();
     articulations_ = copie_articulation;
     branch_size_ = articulations_.size();
-
-    //std::cout << "articulations : " << branch_size_ << std::endl;
-    //std::cout << "arti_exterieure " << articulation_externe_end_ << std::endl;
-
-    /*
-    Vec3 AB = copie_articulation[copie_articulation.size()-1].head<3>() - copie_articulation[copie_articulation.size()-2].head<3>();
-    Vec3 AA = copie_articulation[copie_articulation.size()-2].head<3>() - copie_articulation[copie_articulation.size()-3].head<3>();
-    Vec3 BB = copie_articulation[copie_articulation.size()-1].head<3>() - articulation_externe_end_.head<3>();
-    AA.normalize();
-    AA = AA*AB.norm();
-    BB.normalize();
-    BB=BB*AB.norm();
-    Vec3 Res = AB/2 + BB/16 + AA/16 + copie_articulation[copie_articulation.size()-2].head<3>();
-    std::cout << "nouv_arti : X =  " << Res[0] << " Y = " << Res[1] << " Z = " << Res[2] << std::endl;*/
-
 
 }
 

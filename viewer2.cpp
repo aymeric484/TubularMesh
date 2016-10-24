@@ -130,7 +130,6 @@ void Viewer2::MakeIntersection(std::vector<TriangleGeo> triangles, std::vector<V
             {
                 voisin = true;
                 Nb_voisin++;
-                std::cout << " condition OK " << std::endl;
             }
 
             //
@@ -210,7 +209,7 @@ void Viewer2::MakeIntersection(std::vector<TriangleGeo> triangles, std::vector<V
                         d_courant = map_.phi_1(d_courant);
                         if(map_.phi2(d_courant) == d_courant && map_.phi2(map_.phi_1(d_test)) == map_.phi_1(d_test))
                         {
-                            mbuild2.phi2_sew(d_courant, d_test);
+                            mbuild2.phi2_sew(d_courant, map_.phi_1(d_test));
                             cond_valide++;
                         }
                     }
@@ -367,8 +366,6 @@ void Viewer2::MakeIntersection(std::vector<TriangleGeo> triangles, std::vector<V
         }
         nb_courant++;
         std::cout << " On effectue les coutures : " << cond_valide << std::endl;
-        std::cout << "Nombres de voisin qui devrait valoir 3 : " << Nb_voisin << std::endl;
-
     }
 
     mbuild2.close_map();

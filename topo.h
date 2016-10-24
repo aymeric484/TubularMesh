@@ -96,6 +96,7 @@ public:
 
     VertexAttribute2<Vec3> vertex2_position_; // Position de la map2 contenant l'intersection, généré par MakeIntersection()
 
+    // ces darts peuvent être colorié et affiché en une couleur différente des autres via le viewer
     Dart dart_to_color_red_;
     Dart dart_to_color_blue_;
     Dart dart_to_color_black_;
@@ -118,24 +119,16 @@ private:
     // Génère une map2 contenant la surface de l'intersection à partir d'un tableau de triangelGeo contenant la connectivité de l'enveloppe convexe
     void MakeIntersection(std::vector<TriangleGeo>, std::vector<Vec3> sommets_intersection);
 
-    // Pas utilisé
-    void MakeBranch(const std::vector<Vec3>&, const unsigned int&);
-
     // Test de couture après une fusion
     void TestMergeSew();
 
     // Test de couture simple
     void TestSimpleSew();
 
-
-
-
     Map3 map3inter_; // map3 contenant une intersection subdivisé
-    Map3 map3branch_; // Pas utilisé
     Map2 map2_; // map2 contenant la surface de l'intersection
 
     std::vector<BranchTopo> controls_; // Tableau contenant les darts sauvegardé au cours de l'extrusion et des subdivision concentrique, pour chaque branche
-    std::vector<int> save_pos_; // Pas utilisé
 
     cgogn::CellCache<Map3> cell_cache_prec_;
 

@@ -112,10 +112,6 @@ Squelette::Squelette(const std::string& filename)
 
     // On gère le point externe de la fin de la branche => derrnier point qui n'a pas de face associé puis on le retire de articulation
 
-
-    //mise à jour de la taille du tableau
-    //branch_size_= articulations_.size();
-
     //
     // Création des coordonées de chaque branche et stockage dans le tableau pos_vertices (attribut de branche)
     //
@@ -126,10 +122,6 @@ Squelette::Squelette(const std::string& filename)
         branche.BranchSimplify(DISTANCE_MIN);
         branche.CreateCircleCoordinates(TYPE_PRIMITIVE);
         branche.SubdiDirectionT(COURBURE_MAX, TYPE_PRIMITIVE);
-        /*
-        for(Vec3 v : branche.pos_vertices_)
-            positions_.push_back(v);*/
-        //longueurs_.push_back((branche.articulations_.size()-1)*TYPE_PRIMITIVE);
         branches_[k] = branche;
     }
 

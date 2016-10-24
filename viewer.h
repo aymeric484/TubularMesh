@@ -16,6 +16,8 @@
 #include <cgogn/rendering/drawer.h>
 #include <cgogn/rendering/volume_drawer.h>
 #include <cgogn/rendering/topo_drawer.h>
+#include <cgogn/rendering/frame_manipulator.h>
+
 
 #include <cgogn/rendering/shaders/vbo.h>
 #include <cgogn/rendering/shaders/shader_simple_color.h>
@@ -31,6 +33,8 @@
 #include <cgogn/geometry/algos/normal.h>
 #include <cgogn/geometry/algos/filtering.h>
 #include <cgogn/geometry/types/geometry_traits.h>
+#include <cgogn/geometry/algos/picking.h>
+
 
 #include "topo.h"
 
@@ -49,6 +53,10 @@ public:
 
     virtual void keyPressEvent(QKeyEvent *);
     void mousePressEvent(QMouseEvent*);
+    void mouseReleaseEvent(QMouseEvent* event);
+    void mouseMoveEvent(QMouseEvent* event);
+
+
 
     virtual ~Viewer();
     virtual void closeEvent(QCloseEvent *e);
@@ -56,6 +64,8 @@ public:
 
 
 private:
+
+    void rayClick(QMouseEvent* event, qoglviewer::Vec& P, qoglviewer::Vec& Q);
 
     topo ma_topo_;
 
@@ -68,10 +78,13 @@ private:
     cgogn::rendering::VolumeDrawer* volume_drawer_;
     std::unique_ptr<cgogn::rendering::VolumeDrawer::Renderer> volume_drawer_rend_;
 
-    cgogn::rendering::DisplayListDrawer* drawer_;
+    //cgogn::rendering::DisplayListDrawer* drawer_;
+    std::unique_ptr<cgogn::rendering::DisplayListDrawer> drawer_;
+
     std::unique_ptr<cgogn::rendering::DisplayListDrawer::Renderer> drawer_rend_;
 
     std::unique_ptr<cgogn::rendering::ShaderPointSprite::Param> param_point_sprite_;
+    std::unique_ptr<cgogn::rendering::FrameManipulator> frame_manip_;
 
     bool volume_rendering_;
     bool topo_rendering_;

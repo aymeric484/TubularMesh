@@ -19,7 +19,9 @@ public:
 
 
     CoucheConcentrique(unsigned int, std::vector<Dart>);
-    //addVolume à faire => une insertion
+
+    //
+    //
     std::vector<Dart> indic_volumes_;
     unsigned int etage_;
 

@@ -19,10 +19,11 @@ class Branch
 {
 
 public:
+
     // Constructor
     Branch(int&);
 
-    // Constructor non utilisé
+    // Constructor non utilisé, servirait à afficher une branche à partir du main directement
     Branch(const std::string&);
 
     // Simplifie les noeuds du squelette de la branche
@@ -63,7 +64,7 @@ private:
     std::vector<Vec3> B_axis_; // Bitangente, utile pour la matrice de changement de repère
 
     std::vector<double> theta_; // Angle de torsion
-    std::vector<double> courbure_; // Pourra être éventuelement supprimée => à faire aussi dans ComputeMatrixFromBranch et subdibranch
+    std::vector<double> courbure_; // Cette variable pourra être éventuelement supprimée => à supprimer aussi dans ComputeMatrixFromBranch et subdibranch
     std::vector<double> courbure_max_; //
 
 
